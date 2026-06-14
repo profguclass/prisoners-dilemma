@@ -6,10 +6,7 @@
 <title>Iterated Prisoner's Dilemma</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
-:root {
-  --bg:#0d1117; --surface:#161b22; --border:#21262d;
-  --text:#e6edf3; --muted:#7d8590; --accent:#58a6ff;
-}
+:root{--bg:#0d1117;--surface:#161b22;--border:#21262d;--text:#e6edf3;--muted:#7d8590;--accent:#58a6ff;}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:14px;min-height:100vh;}
 header{border-bottom:1px solid var(--border);padding:16px 24px;display:flex;align-items:baseline;gap:12px;}
@@ -29,8 +26,7 @@ aside{border-right:1px solid var(--border);padding:18px 14px;display:flex;flex-d
 .tick-control label{font-size:11px;color:var(--muted);white-space:nowrap;}
 .tick-control input[type=number]{width:58px;background:var(--border);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:3px 6px;}
 button{font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:500;border:none;border-radius:6px;padding:7px 11px;cursor:pointer;transition:opacity .15s;}
-button:hover{opacity:.82;}
-button:disabled{opacity:.35;cursor:not-allowed;}
+button:hover{opacity:.82;}button:disabled{opacity:.35;cursor:not-allowed;}
 #btn-run{background:var(--accent);color:#0d1117;flex:1;}
 #btn-step{background:var(--surface);color:var(--text);border:1px solid var(--border);flex:1;}
 #btn-reset{background:var(--surface);color:var(--muted);border:1px solid var(--border);width:100%;}
@@ -63,8 +59,7 @@ main{padding:18px 22px;display:flex;flex-direction:column;gap:18px;overflow-y:au
 .matrix-table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px;}
 .matrix-table th,.matrix-table td{padding:6px 9px;border:1px solid var(--border);text-align:center;}
 .matrix-table th{background:var(--bg);color:var(--muted);font-weight:400;}
-.matrix-table td.hi{color:#3fb950;}
-.matrix-table td.lo{color:#f85149;}
+.matrix-table td.hi{color:#3fb950;}.matrix-table td.lo{color:#f85149;}
 .info-box p{font-size:11px;color:var(--muted);line-height:1.75;}
 @media(max-width:860px){.layout{grid-template-columns:1fr;}aside{border-right:none;border-bottom:1px solid var(--border);}.bottom-row{grid-template-columns:1fr;}}
 </style>
@@ -152,27 +147,21 @@ const STRATEGIES = [
   {key:"unknown",     label:"unknown",     color:"#ff7b72", default:0},
 ];
 const PAYOFF = {"false,false":3,"true,false":5,"false,true":0,"true,true":1};
-const SPEED = 1.8;       // pixels per frame while wandering
-const MEET_DIST = 22;    // pixels — how close before they "meet"
-const MEET_FRAMES = 40;  // frames to stay paired before separating
-const ARROW_SIZE = 11;
+const SPEED       = 1.8;   // wander speed px/frame
+const SEEK_SPEED  = 3.0;   // approach speed
+const FLEE_SPEED  = 3.2;   // flee speed
+const MEET_DIST   = 20;    // px — trigger meeting
+const MEET_FRAMES = 45;    // frames to stay paired
+const FLEE_FRAMES = 28;    // frames to flee before wandering
+const ARROW_SIZE  = 11;
 
-// ── STATE ────────────────────────────────────────────────────────────────────
-let agents = [];          // visual+logic objects
-let simTick = 0;
+// ── GLOBAL STATE ─────────────────────────────────────────────────────────────
+let agents    = [];   // array of agent objects
+let agentById = {};   // id → agent  (THE FIX: lookup by id, not index)
+let simTick   = 0;
 let scoreHistory = {};
 let simRunning = false;
-let simTimer = null;
-
-// ── PHASE SYSTEM ─────────────────────────────────────────────────────────────
-// Each agent has a phase:
-//   "wander"  — moving freely, looking for a partner
-//   "seek"    — moving toward assigned partner
-//   "meet"    — stopped, facing partner, interaction happening
-//   "flee"    — moving away briefly after separation
-const SEEK_SPEED  = 2.8;
-const FLEE_SPEED  = 3.0;
-const FLEE_FRAMES = 25;
+let simTimer   = null;
 
 // ── SLIDERS ──────────────────────────────────────────────────────────────────
 const slidersEl = document.getElementById("sliders");
@@ -193,14 +182,14 @@ STRATEGIES.forEach(s => {
 const legendEl = document.getElementById("legend");
 STRATEGIES.forEach(s => {
   const el = document.createElement("div");
-  el.className="legend-item"; el.id=`leg-${s.key}`; el.style.display="none";
-  el.innerHTML=`<div class="legend-line" style="background:${s.color}"></div>${s.label}`;
+  el.className = "legend-item"; el.id = `leg-${s.key}`; el.style.display = "none";
+  el.innerHTML = `<div class="legend-line" style="background:${s.color}"></div>${s.label}`;
   legendEl.appendChild(el);
 });
 function updateLegend(){
-  STRATEGIES.forEach(s=>{
-    const n=parseInt(document.getElementById(`sl-${s.key}`).value);
-    document.getElementById(`leg-${s.key}`).style.display=n>0?"flex":"none";
+  STRATEGIES.forEach(s => {
+    const n = parseInt(document.getElementById(`sl-${s.key}`).value);
+    document.getElementById(`leg-${s.key}`).style.display = n > 0 ? "flex" : "none";
   });
 }
 
@@ -209,247 +198,240 @@ const worldCanvas = document.getElementById("world");
 const wctx = worldCanvas.getContext("2d");
 function WW(){ return worldCanvas.offsetWidth; }
 function WH(){ return worldCanvas.offsetHeight; }
-
 function resizeWorld(){
   worldCanvas.width  = WW() * devicePixelRatio;
   worldCanvas.height = WH() * devicePixelRatio;
   wctx.scale(devicePixelRatio, devicePixelRatio);
 }
 
-// ── SETUP ────────────────────────────────────────────────────────────────────
+// ── SETUP ─────────────────────────────────────────────────────────────────────
 function setup(){
-  agents=[]; simTick=0; scoreHistory={};
-  STRATEGIES.forEach(s=>{ scoreHistory[s.key]=[]; });
+  agents = []; agentById = {}; simTick = 0; scoreHistory = {};
+  STRATEGIES.forEach(s => { scoreHistory[s.key] = []; });
 
-  const agentDefs=[];
-  STRATEGIES.forEach(s=>{
-    const n=parseInt(document.getElementById(`sl-${s.key}`).value);
-    for(let i=0;i<n;i++) agentDefs.push(s);
+  // Build full list of agent definitions respecting slider counts
+  const agentDefs = [];
+  STRATEGIES.forEach(s => {
+    const n = parseInt(document.getElementById(`sl-${s.key}`).value);
+    for(let i = 0; i < n; i++) agentDefs.push(s);
   });
 
-  const total=agentDefs.length;
-  const ww=WW(), wh=WH();
-  const cols=Math.ceil(Math.sqrt(total*(ww/wh)));
-  const rows=Math.ceil(total/cols);
+  const total = agentDefs.length;
+  const ww = WW(), wh = WH();
+  // Spread evenly using grid layout
+  const cols = Math.max(1, Math.ceil(Math.sqrt(total * ww / wh)));
+  const rows = Math.max(1, Math.ceil(total / cols));
+  const cellW = ww / cols, cellH = wh / rows;
 
-  agentDefs.forEach((s, idx)=>{
-    const col=idx%cols, row=Math.floor(idx/cols);
-    const x = (ww/cols)*(col+0.5) + (Math.random()-.5)*(ww/cols)*.6;
-    const y = (wh/rows)*(row+0.5) + (Math.random()-.5)*(wh/rows)*.6;
-    const angle = Math.random()*Math.PI*2;
-    agents.push({
-      id:idx, strategy:s.key, color:s.color,
-      score:0, defectNow:false, partnerDefected:false,
-      partnerHistory:{},
-      x: Math.max(15,Math.min(ww-15,x)),
-      y: Math.max(15,Math.min(wh-15,y)),
+  agentDefs.forEach((s, idx) => {
+    const col = idx % cols, row = Math.floor(idx / cols);
+    const x = cellW * (col + 0.5) + (Math.random() - 0.5) * cellW * 0.55;
+    const y = cellH * (row + 0.5) + (Math.random() - 0.5) * cellH * 0.55;
+    const angle = Math.random() * Math.PI * 2;
+    const agent = {
+      id: idx,                  // unique integer id
+      strategy: s.key,
+      color: s.color,
+      score: 0,
+      defectNow: false,
+      partnerDefected: false,
+      partnerHistory: {},       // keyed by partner id
+      x: Math.max(14, Math.min(ww - 14, x)),
+      y: Math.max(14, Math.min(wh - 14, y)),
       angle,
-      phase:"wander",   // wander | seek | meet | flee
-      partnerId:null,
-      meetTimer:0,
-      fleeTimer:0,
-      label:"", labelAlpha:0,
-    });
+      phase: "wander",          // wander | seek | meet | flee
+      partnerId: null,          // id of current partner
+      meetTimer: 0,
+      fleeTimer: 0,
+      label: "",
+      labelAlpha: 0,
+    };
+    agents.push(agent);
+    agentById[idx] = agent;     // register in lookup map
   });
 }
 
 // ── STRATEGY LOGIC ────────────────────────────────────────────────────────────
-function selectAction(a){
-  const ph = a.partnerHistory[a.partnerId]||false;
+function selectAction(a) {
+  const ph = a.partnerHistory[a.partnerId] || false;
   switch(a.strategy){
-    case "random":      a.defectNow=Math.random()<0.5; break;
-    case "cooperate":   a.defectNow=false; break;
-    case "defect":      a.defectNow=true;  break;
-    default:            a.defectNow=ph;    break;  // tit-for-tat, unforgiving, unknown
+    case "random":    a.defectNow = Math.random() < 0.5; break;
+    case "cooperate": a.defectNow = false; break;
+    case "defect":    a.defectNow = true;  break;
+    default:          a.defectNow = ph;    break; // tit-for-tat, unforgiving, unknown
   }
 }
-function updateHistory(a, partner){
+function updateHistory(a, b) {
   switch(a.strategy){
     case "tit-for-tat": case "unknown":
-      a.partnerHistory[partner.id]=a.partnerDefected; break;
+      a.partnerHistory[b.id] = a.partnerDefected; break;
     case "unforgiving":
-      if(a.partnerDefected) a.partnerHistory[partner.id]=true; break;
+      if(a.partnerDefected) a.partnerHistory[b.id] = true; break;
   }
 }
-
-// ── PAIRING ENGINE ────────────────────────────────────────────────────────────
-// Called once per sim tick: assigns partners to wandering agents
-function assignPairs(){
-  const wanderers = agents.filter(a=>a.phase==="wander");
-  // shuffle
-  for(let i=wanderers.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [wanderers[i],wanderers[j]]=[wanderers[j],wanderers[i]];
-  }
-  for(let i=0;i+1<wanderers.length;i+=2){
-    wanderers[i].phase   = "seek";
-    wanderers[i+1].phase = "seek";
-    wanderers[i].partnerId   = wanderers[i+1].id;
-    wanderers[i+1].partnerId = wanderers[i].id;
-  }
-}
-
-// ── RESOLVE INTERACTION ───────────────────────────────────────────────────────
-function resolveInteraction(a, b){
+function resolveInteraction(a, b) {
   selectAction(a); selectAction(b);
   a.partnerDefected = b.defectNow;
   b.partnerDefected = a.defectNow;
   const gainA = PAYOFF[`${a.defectNow},${a.partnerDefected}`];
   const gainB = PAYOFF[`${b.defectNow},${b.partnerDefected}`];
-  a.score+=gainA; b.score+=gainB;
-  a.label=String(gainA); b.label=String(gainB);
-  a.labelAlpha=1; b.labelAlpha=1;
-  updateHistory(a,b); updateHistory(b,a);
+  a.score += gainA; b.score += gainB;
+  a.label = String(gainA); b.label = String(gainB);
+  a.labelAlpha = 1.0; b.labelAlpha = 1.0;
+  updateHistory(a, b); updateHistory(b, a);
 }
 
-// ── SIM TICK (called by controls) ─────────────────────────────────────────────
-function doSimTick(){
-  // only tick once all agents are back to wander/flee (or force it)
+// ── PAIRING (called each sim tick) ───────────────────────────────────────────
+function assignPairs() {
+  const wanderers = agents.filter(a => a.phase === "wander");
+  // Fisher-Yates shuffle
+  for(let i = wanderers.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [wanderers[i], wanderers[j]] = [wanderers[j], wanderers[i]];
+  }
+  for(let i = 0; i + 1 < wanderers.length; i += 2){
+    const a = wanderers[i], b = wanderers[i + 1];
+    a.phase = "seek"; b.phase = "seek";
+    a.partnerId = b.id;   // store the OTHER agent's .id
+    b.partnerId = a.id;
+  }
+}
+
+// ── SIM TICK ─────────────────────────────────────────────────────────────────
+function doSimTick() {
   assignPairs();
   simTick++;
-  updateScoreHistory();
-  document.getElementById("tick-display").textContent=simTick;
+  // update score history
+  STRATEGIES.forEach(s => {
+    const g = agents.filter(a => a.strategy === s.key);
+    if(g.length) scoreHistory[s.key].push(g.reduce((acc, a) => acc + a.score, 0) / g.length);
+  });
+  document.getElementById("tick-display").textContent = simTick;
   updateLeaderboard();
   resizeChart(); drawChart();
 }
 
-function updateScoreHistory(){
-  STRATEGIES.forEach(s=>{
-    const g=agents.filter(a=>a.strategy===s.key);
-    if(g.length) scoreHistory[s.key].push(g.reduce((acc,a)=>acc+a.score,0)/g.length);
-  });
-}
-
-// ── ANIMATION FRAME ───────────────────────────────────────────────────────────
-// This runs every frame (~60fps) and handles ALL movement + drawing
-let lastTime=0;
-function animFrame(ts){
+// ── ANIMATION LOOP (60fps, handles movement + drawing) ───────────────────────
+function animFrame() {
   requestAnimationFrame(animFrame);
-  const ww=WW(), wh=WH();
+  const ww = WW(), wh = WH();
 
-  // ── MOVE AGENTS ──
-  agents.forEach(a=>{
-    if(a.labelAlpha>0) a.labelAlpha-=0.02;
+  agents.forEach(a => {
+    // fade label
+    if(a.labelAlpha > 0) a.labelAlpha -= 0.022;
 
-    if(a.phase==="wander"){
-      // random walk
-      a.angle += (Math.random()-.5)*0.35;
-      a.x += Math.cos(a.angle)*SPEED;
-      a.y += Math.sin(a.angle)*SPEED;
-      // wrap
-      a.x=(a.x+ww)%ww; a.y=(a.y+wh)%wh;
+    if(a.phase === "wander") {
+      a.angle += (Math.random() - 0.5) * 0.38;
+      a.x = (a.x + Math.cos(a.angle) * SPEED + ww) % ww;
+      a.y = (a.y + Math.sin(a.angle) * SPEED + wh) % wh;
     }
-    else if(a.phase==="seek"){
-      const partner=agents[a.partnerId];
-      if(!partner){ a.phase="wander"; return; }
-      const dx=partner.x-a.x, dy=partner.y-a.y;
-      const dist=Math.sqrt(dx*dx+dy*dy);
-      a.angle=Math.atan2(dy,dx);
-      if(dist<MEET_DIST){
-        // close enough — enter meet phase (both must be in seek)
-        if(partner.phase==="seek"){
-          a.phase="meet"; partner.phase="meet";
-          a.meetTimer=MEET_FRAMES; partner.meetTimer=MEET_FRAMES;
-          // face each other
-          a.angle      = Math.atan2(dy,dx);
-          partner.angle= Math.atan2(-dy,-dx);
-          // resolve game
-          resolveInteraction(a,partner);
-        }
-      } else {
-        a.x+=Math.cos(a.angle)*SEEK_SPEED;
-        a.y+=Math.sin(a.angle)*SEEK_SPEED;
-        a.x=(a.x+ww)%ww; a.y=(a.y+wh)%wh;
+    else if(a.phase === "seek") {
+      // *** KEY FIX: look up partner by id using agentById map ***
+      const partner = agentById[a.partnerId];
+      if(!partner) { a.phase = "wander"; a.partnerId = null; return; }
+
+      const dx = partner.x - a.x, dy = partner.y - a.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      a.angle = Math.atan2(dy, dx);
+
+      if(dist < MEET_DIST && partner.phase === "seek") {
+        // Both are close — start meeting
+        a.phase = "meet"; partner.phase = "meet";
+        a.meetTimer = MEET_FRAMES; partner.meetTimer = MEET_FRAMES;
+        a.angle       =  Math.atan2(dy, dx);
+        partner.angle =  Math.atan2(-dy, -dx);
+        resolveInteraction(a, partner);
+      } else if(dist >= MEET_DIST) {
+        a.x = (a.x + Math.cos(a.angle) * SEEK_SPEED + ww) % ww;
+        a.y = (a.y + Math.sin(a.angle) * SEEK_SPEED + wh) % wh;
       }
     }
-    else if(a.phase==="meet"){
+    else if(a.phase === "meet") {
       a.meetTimer--;
-      if(a.meetTimer<=0){
-        // separate: flee in opposite direction
-        a.angle += Math.PI + (Math.random()-.5)*0.8;
-        a.phase="flee";
-        a.fleeTimer=FLEE_FRAMES;
-        a.partnerId=null;
+      if(a.meetTimer <= 0) {
+        a.angle += Math.PI + (Math.random() - 0.5) * 0.9;
+        a.phase = "flee";
+        a.fleeTimer = FLEE_FRAMES;
+        a.partnerId = null;
       }
     }
-    else if(a.phase==="flee"){
-      a.x+=Math.cos(a.angle)*FLEE_SPEED;
-      a.y+=Math.sin(a.angle)*FLEE_SPEED;
-      a.x=(a.x+ww)%ww; a.y=(a.y+wh)%wh;
+    else if(a.phase === "flee") {
+      a.x = (a.x + Math.cos(a.angle) * FLEE_SPEED + ww) % ww;
+      a.y = (a.y + Math.sin(a.angle) * FLEE_SPEED + wh) % wh;
       a.fleeTimer--;
-      if(a.fleeTimer<=0) a.phase="wander";
+      if(a.fleeTimer <= 0) a.phase = "wander";
     }
   });
 
-  // ── DRAW WORLD ──
-  wctx.clearRect(0,0,ww,wh);
+  // ── DRAW ──
+  wctx.clearRect(0, 0, ww, wh);
 
-  // draw connection lines for meeting pairs
-  const drawn=new Set();
-  agents.forEach(a=>{
-    if((a.phase==="seek"||a.phase==="meet") && a.partnerId!=null && !drawn.has(a.partnerId)){
-      const b=agents[a.partnerId];
-      if(b){
-        drawn.add(a.id);
+  // connection lines for pairs
+  const drawn = new Set();
+  agents.forEach(a => {
+    if(a.partnerId != null && !drawn.has(a.id)){
+      const b = agentById[a.partnerId];
+      if(b) {
+        drawn.add(b.id);
         wctx.beginPath();
-        wctx.moveTo(a.x,a.y); wctx.lineTo(b.x,b.y);
-        wctx.strokeStyle= a.phase==="meet"
-          ? "rgba(255,255,255,0.18)"
-          : "rgba(255,255,255,0.06)";
-        wctx.lineWidth=1;
+        wctx.moveTo(a.x, a.y); wctx.lineTo(b.x, b.y);
+        wctx.strokeStyle = a.phase === "meet"
+          ? "rgba(255,255,255,0.22)"
+          : "rgba(255,255,255,0.07)";
+        wctx.lineWidth = 1;
         wctx.stroke();
       }
     }
   });
 
-  // draw agents
-  agents.forEach(a=>{
-    drawArrow(a.x, a.y, a.angle, a.color, a.phase==="meet"?13:11);
+  // agents
+  agents.forEach(a => {
+    const size = a.phase === "meet" ? ARROW_SIZE + 2 : ARROW_SIZE;
+    drawArrow(a.x, a.y, a.angle, a.color, size);
 
-    // payoff label
-    if(a.labelAlpha>0 && a.label){
+    if(a.labelAlpha > 0 && a.label) {
       wctx.save();
-      wctx.globalAlpha=a.labelAlpha;
-      wctx.font="bold 12px 'IBM Plex Mono',monospace";
-      wctx.fillStyle="#fff";
-      wctx.fillText(a.label, a.x+13, a.y-8);
+      wctx.globalAlpha = Math.max(0, a.labelAlpha);
+      wctx.font = "bold 12px 'IBM Plex Mono',monospace";
+      wctx.fillStyle = "#fff";
+      wctx.fillText(a.label, a.x + 13, a.y - 8);
       wctx.restore();
     }
   });
 }
 
-function drawArrow(x,y,angle,color,size){
+function drawArrow(x, y, angle, color, size) {
   wctx.save();
-  wctx.translate(x,y);
+  wctx.translate(x, y);
   wctx.rotate(angle);
   wctx.beginPath();
-  wctx.moveTo(size,0);
-  wctx.lineTo(-size*.65, size*.55);
-  wctx.lineTo(-size*.3,0);
-  wctx.lineTo(-size*.65,-size*.55);
+  wctx.moveTo(size, 0);
+  wctx.lineTo(-size * 0.65,  size * 0.55);
+  wctx.lineTo(-size * 0.28,  0);
+  wctx.lineTo(-size * 0.65, -size * 0.55);
   wctx.closePath();
-  wctx.fillStyle=color;
+  wctx.fillStyle = color;
   wctx.fill();
   wctx.restore();
 }
 
-// ── CHART ────────────────────────────────────────────────────────────────────
-const chartCanvas=document.getElementById("chart");
-const cctx=chartCanvas.getContext("2d");
+// ── CHART ─────────────────────────────────────────────────────────────────────
+const chartCanvas = document.getElementById("chart");
+const cctx = chartCanvas.getContext("2d");
 function resizeChart(){
-  chartCanvas.width=chartCanvas.offsetWidth*devicePixelRatio;
-  chartCanvas.height=chartCanvas.offsetHeight*devicePixelRatio;
-  cctx.scale(devicePixelRatio,devicePixelRatio);
+  chartCanvas.width  = chartCanvas.offsetWidth  * devicePixelRatio;
+  chartCanvas.height = chartCanvas.offsetHeight * devicePixelRatio;
+  cctx.scale(devicePixelRatio, devicePixelRatio);
 }
 function drawChart(){
-  const W=chartCanvas.offsetWidth,H=chartCanvas.offsetHeight;
-  cctx.clearRect(0,0,W,H);
-  const PAD={top:8,right:14,bottom:26,left:40};
-  const pw=W-PAD.left-PAD.right, ph=H-PAD.top-PAD.bottom;
-  let maxVal=10;
-  STRATEGIES.forEach(s=>scoreHistory[s.key].forEach(v=>{ if(v>maxVal)maxVal=v; }));
-  maxVal=Math.ceil(maxVal/10)*10||10;
-  const totalT=Math.max(...STRATEGIES.map(s=>scoreHistory[s.key].length),1);
+  const W = chartCanvas.offsetWidth, H = chartCanvas.offsetHeight;
+  cctx.clearRect(0, 0, W, H);
+  const PAD = {top:8,right:14,bottom:26,left:40};
+  const pw = W-PAD.left-PAD.right, ph = H-PAD.top-PAD.bottom;
+  let maxVal = 10;
+  STRATEGIES.forEach(s => scoreHistory[s.key].forEach(v => { if(v > maxVal) maxVal = v; }));
+  maxVal = Math.ceil(maxVal / 10) * 10 || 10;
+  const totalT = Math.max(...STRATEGIES.map(s => scoreHistory[s.key].length), 1);
   cctx.strokeStyle="#21262d"; cctx.lineWidth=1;
   cctx.fillStyle="#7d8590"; cctx.font="9px 'IBM Plex Mono',monospace"; cctx.textAlign="right";
   for(let i=0;i<=4;i++){
@@ -467,7 +449,7 @@ function drawChart(){
   STRATEGIES.forEach(s=>{
     const data=scoreHistory[s.key]; if(!data.length)return;
     const col=STRATEGIES.find(x=>x.key===s.key).color;
-    cctx.strokeStyle=col; cctx.lineWidth=2; cctx.lineJoin="round";
+    cctx.strokeStyle=col;cctx.lineWidth=2;cctx.lineJoin="round";
     cctx.beginPath();
     data.forEach((v,i)=>{
       const x=PAD.left+(i/Math.max(totalT-1,1))*pw;
@@ -483,7 +465,7 @@ function updateLeaderboard(){
   const el=document.getElementById("leaderboard"); el.innerHTML="";
   const entries=STRATEGIES.map(s=>{
     const g=agents.filter(a=>a.strategy===s.key);
-    return {...s, avg: g.length ? g.reduce((acc,a)=>acc+a.score,0)/g.length : null};
+    return {...s,avg:g.length?g.reduce((acc,a)=>acc+a.score,0)/g.length:null};
   }).filter(s=>s.avg!==null).sort((a,b)=>b.avg-a.avg);
   const max=entries[0]?.avg||1;
   entries.forEach((s,i)=>{
@@ -499,25 +481,21 @@ function updateLeaderboard(){
 
 // ── CONTROLS ─────────────────────────────────────────────────────────────────
 function doReset(){
-  stopSim();
-  setup();
+  stopSim(); setup();
   resizeChart(); cctx.clearRect(0,0,chartCanvas.offsetWidth,chartCanvas.offsetHeight);
   document.getElementById("tick-display").textContent=0;
   document.getElementById("leaderboard").innerHTML="";
   updateLegend();
 }
-
 function doStep(){
   if(!agents.length) setup();
   doSimTick();
 }
-
 function stopSim(){
   simRunning=false; clearTimeout(simTimer);
   document.getElementById("btn-run").textContent="▶ Run";
   document.getElementById("btn-step").disabled=false;
 }
-
 function doRun(){
   if(simRunning){ stopSim(); return; }
   if(!agents.length) setup();
@@ -528,19 +506,17 @@ function doRun(){
   document.getElementById("btn-step").disabled=true;
   function loop(){
     if(!simRunning||(simTick-startTick)>=maxTicks){ stopSim(); return; }
-    // wait until most agents are done meeting before next tick
+    // wait until agents finish current meetings before next tick
     const busy=agents.filter(a=>a.phase==="seek"||a.phase==="meet").length;
-    if(busy===0){
-      doSimTick();
-    }
-    simTimer=setTimeout(loop,60);
+    if(busy===0) doSimTick();
+    simTimer=setTimeout(loop,50);
   }
   loop();
 }
 
-document.getElementById("btn-run").addEventListener("click",doRun);
-document.getElementById("btn-step").addEventListener("click",doStep);
-document.getElementById("btn-reset").addEventListener("click",doReset);
+document.getElementById("btn-run").addEventListener("click", doRun);
+document.getElementById("btn-step").addEventListener("click", doStep);
+document.getElementById("btn-reset").addEventListener("click", doReset);
 window.addEventListener("resize",()=>{ resizeWorld(); resizeChart(); drawChart(); });
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
