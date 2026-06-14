@@ -6,177 +6,329 @@
 <title>Iterated Prisoner's Dilemma</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
-:root{--bg:#0d1117;--surface:#161b22;--border:#21262d;--text:#e6edf3;--muted:#7d8590;--accent:#58a6ff;}
+:root{
+  --bg:#0d1117;--surface:#161b22;--border:#21262d;
+  --text:#e6edf3;--muted:#7d8590;--accent:#58a6ff;
+}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:14px;min-height:100vh;}
-header{border-bottom:1px solid var(--border);padding:16px 24px;display:flex;align-items:baseline;gap:12px;}
-header h1{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:14px;min-height:100vh;display:flex;flex-direction:column;}
+
+/* ── HEADER ── */
+header{border-bottom:1px solid var(--border);padding:13px 20px;display:flex;align-items:baseline;gap:12px;flex-shrink:0;}
+header h1{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;}
 header span{font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
-.layout{display:grid;grid-template-columns:250px 1fr;min-height:calc(100vh - 53px);}
-aside{border-right:1px solid var(--border);padding:18px 14px;display:flex;flex-direction:column;gap:18px;overflow-y:auto;}
-.section-label{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
-.strategy-row{display:flex;align-items:center;gap:7px;margin-bottom:7px;}
+
+/* ── MAIN LAYOUT: canvas left, panel right ── */
+.layout{
+  flex:1;display:flex;gap:0;overflow:hidden;
+}
+
+/* ── LEFT: square canvas area ── */
+.canvas-col{
+  flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  padding:16px;
+  background:var(--bg);
+}
+.world-box{
+  background:#000;border:1px solid var(--border);border-radius:10px;overflow:hidden;
+  /* square enforced by JS */
+}
+#world{display:block;}
+
+/* ── RIGHT: control panel ── */
+.panel{
+  flex:1;min-width:0;
+  display:flex;flex-direction:column;
+  border-left:1px solid var(--border);
+  overflow-y:auto;
+}
+
+/* panel sections */
+.panel-section{
+  border-bottom:1px solid var(--border);
+  padding:14px 16px;
+}
+.panel-section:last-child{border-bottom:none;flex:1;}
+
+.section-label{
+  font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;
+  letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;
+}
+
+/* ── STRATEGY SLIDERS ── */
+.strategy-row{display:flex;align-items:center;gap:7px;margin-bottom:8px;}
 .strategy-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-.strategy-name{font-family:'IBM Plex Mono',monospace;font-size:11px;width:80px;flex-shrink:0;}
-.strategy-row input[type=range]{flex:1;accent-color:var(--accent);cursor:pointer;}
-.strategy-val{font-family:'IBM Plex Mono',monospace;font-size:11px;width:18px;text-align:right;color:var(--muted);}
-.sim-controls{display:flex;flex-direction:column;gap:6px;}
-.row-two{display:flex;gap:6px;}
-.tick-control{display:flex;align-items:center;gap:7px;}
-.tick-control label{font-size:11px;color:var(--muted);white-space:nowrap;}
-.tick-control input[type=number]{width:58px;background:var(--border);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:3px 6px;}
-button{font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:500;border:none;border-radius:6px;padding:7px 11px;cursor:pointer;transition:opacity .15s;}
+.strategy-name{font-family:'IBM Plex Mono',monospace;font-size:11px;width:78px;flex-shrink:0;}
+.strategy-row input[type=range]{flex:1;accent-color:var(--accent);cursor:pointer;min-width:60px;}
+.strategy-val{font-family:'IBM Plex Mono',monospace;font-size:11px;width:14px;text-align:right;color:var(--muted);}
+.strategy-count{
+  font-family:'IBM Plex Mono',monospace;font-size:10px;
+  color:var(--accent);background:rgba(88,166,255,0.1);
+  border:1px solid rgba(88,166,255,0.2);
+  border-radius:3px;padding:1px 5px;min-width:28px;text-align:center;
+  flex-shrink:0;
+}
+
+/* ── SIM CONTROLS ── */
+.sim-controls{display:flex;flex-direction:column;gap:8px;}
+.ctrl-row{display:flex;gap:6px;align-items:center;}
+.ctrl-label{font-size:11px;color:var(--muted);white-space:nowrap;width:48px;}
+input[type=number]{
+  width:60px;background:var(--border);border:1px solid var(--border);
+  border-radius:4px;color:var(--text);font-family:'IBM Plex Mono',monospace;
+  font-size:11px;padding:4px 7px;
+}
+input[type=number]:focus{outline:1px solid var(--accent);}
+
+/* speed slider */
+.speed-row{display:flex;align-items:center;gap:8px;}
+.speed-row input[type=range]{flex:1;accent-color:var(--accent);cursor:pointer;}
+.speed-val{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);width:28px;text-align:right;}
+
+button{
+  font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:500;
+  border:none;border-radius:6px;padding:7px 11px;cursor:pointer;transition:opacity .15s;
+}
 button:hover{opacity:.82;}button:disabled{opacity:.35;cursor:not-allowed;}
 #btn-run{background:var(--accent);color:#0d1117;flex:1;}
 #btn-step{background:var(--surface);color:var(--text);border:1px solid var(--border);flex:1;}
-#btn-reset{background:var(--surface);color:var(--muted);border:1px solid var(--border);width:100%;}
-.stat-block{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;}
-.tick-counter{font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:600;color:var(--accent);line-height:1;}
+#btn-reset{background:var(--surface);color:var(--muted);border:1px solid var(--border);flex:1;}
+
+/* ── STATS ROW ── */
+.stats-row{display:flex;gap:10px;align-items:stretch;}
+.stat-block{
+  background:var(--surface);border:1px solid var(--border);border-radius:7px;
+  padding:9px 12px;flex:1;
+}
+.tick-counter{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;color:var(--accent);line-height:1;}
 .tick-label{font-size:10px;color:var(--muted);margin-top:2px;}
-.leaderboard{display:flex;flex-direction:column;gap:5px;}
-.lb-row{display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:4px;background:var(--bg);border:1px solid transparent;transition:border-color .2s;}
+
+/* ── LEADERBOARD ── */
+.leaderboard{display:flex;flex-direction:column;gap:4px;}
+.lb-row{
+  display:flex;align-items:center;gap:6px;padding:5px 7px;
+  border-radius:4px;background:var(--bg);border:1px solid transparent;transition:border-color .2s;
+}
 .lb-row.leader{border-color:var(--border);}
 .lb-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
 .lb-name{font-family:'IBM Plex Mono',monospace;font-size:10px;flex:1;}
 .lb-bar-wrap{width:46px;height:3px;background:var(--border);border-radius:2px;}
 .lb-bar{height:3px;border-radius:2px;transition:width .3s;}
-.lb-score{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);}
-main{padding:18px 22px;display:flex;flex-direction:column;gap:18px;overflow-y:auto;}
-.payoff-strip{display:flex;gap:8px;flex-wrap:wrap;}
-.payoff-card{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 12px;display:flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);}
-.payoff-val{font-size:16px;font-weight:600;color:var(--text);}
-.world-box{background:#000;border:1px solid var(--border);border-radius:10px;overflow:hidden;}
-#world{display:block;width:100%;height:380px;}
-.chart-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;}
-.chart-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
-.chart-title{font-family:'IBM Plex Mono',monospace;font-size:12px;}
-.legend{display:flex;gap:10px;flex-wrap:wrap;}
+.lb-score{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);width:28px;text-align:right;}
+
+/* ── CHART ── */
+.chart-box{display:flex;flex-direction:column;}
+.chart-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.chart-title{font-family:'IBM Plex Mono',monospace;font-size:11px;}
+.legend{display:flex;gap:8px;flex-wrap:wrap;}
 .legend-item{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
-.legend-line{width:13px;height:2px;border-radius:1px;}
+.legend-line{width:12px;height:2px;border-radius:1px;}
 #chart{display:block;width:100%;}
-.bottom-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-.info-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;}
-.matrix-table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px;}
-.matrix-table th,.matrix-table td{padding:6px 9px;border:1px solid var(--border);text-align:center;}
+
+/* ── PAYOFF + STRATEGY GUIDE ── */
+.payoff-strip{display:flex;gap:6px;flex-wrap:wrap;}
+.payoff-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:6px;
+  padding:5px 10px;display:flex;align-items:center;gap:5px;
+  font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);
+}
+.payoff-val{font-size:14px;font-weight:600;color:var(--text);}
+.matrix-table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:10px;}
+.matrix-table th,.matrix-table td{padding:5px 8px;border:1px solid var(--border);text-align:center;}
 .matrix-table th{background:var(--bg);color:var(--muted);font-weight:400;}
 .matrix-table td.hi{color:#3fb950;}.matrix-table td.lo{color:#f85149;}
-.info-box p{font-size:11px;color:var(--muted);line-height:1.75;}
-@media(max-width:860px){.layout{grid-template-columns:1fr;}aside{border-right:none;border-bottom:1px solid var(--border);}.bottom-row{grid-template-columns:1fr;}}
+.info-box p{font-size:11px;color:var(--muted);line-height:1.8;}
+
+/* ── BOTTOM INFO GRID ── */
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+@media(max-width:900px){
+  .layout{flex-direction:column;}
+  .canvas-col{padding:12px;}
+  .panel{border-left:none;border-top:1px solid var(--border);}
+  .info-grid{grid-template-columns:1fr;}
+}
 </style>
 </head>
 <body>
 <header>
   <h1>Iterated Prisoner's Dilemma</h1>
-  <span>// agent-based simulation · NetLogo → browser</span>
+  <span>// agent-based simulation · NetLogo → Python → browser</span>
 </header>
+
 <div class="layout">
-  <aside>
-    <div>
+  <!-- LEFT: square world canvas -->
+  <div class="canvas-col" id="canvas-col">
+    <div class="world-box" id="world-box">
+      <canvas id="world"></canvas>
+    </div>
+  </div>
+
+  <!-- RIGHT: control panel -->
+  <div class="panel">
+
+    <!-- Strategy sliders -->
+    <div class="panel-section">
       <div class="section-label">Agents per strategy</div>
       <div id="sliders"></div>
     </div>
-    <div>
+
+    <!-- Sim controls -->
+    <div class="panel-section">
       <div class="section-label">Simulation</div>
       <div class="sim-controls">
-        <div class="tick-control">
-          <label>Ticks:</label>
+        <div class="ctrl-row">
+          <span class="ctrl-label">Ticks:</span>
           <input type="number" id="tick-count" value="100" min="1" max="2000"/>
         </div>
-        <div class="row-two">
+        <div class="ctrl-row">
+          <span class="ctrl-label">Speed:</span>
+          <div class="speed-row" style="flex:1">
+            <input type="range" id="speed-slider" min="1" max="10" value="5"/>
+            <span class="speed-val" id="speed-val">5×</span>
+          </div>
+        </div>
+        <div class="ctrl-row">
           <button id="btn-run">▶ Run</button>
           <button id="btn-step">Step</button>
+          <button id="btn-reset">↺ Reset</button>
         </div>
-        <button id="btn-reset">↺ Reset</button>
       </div>
     </div>
-    <div class="stat-block">
-      <div class="tick-counter" id="tick-display">0</div>
-      <div class="tick-label">ticks elapsed</div>
-    </div>
-    <div>
+
+    <!-- Tick counter + leaderboard -->
+    <div class="panel-section">
+      <div class="stats-row" style="margin-bottom:12px">
+        <div class="stat-block">
+          <div class="tick-counter" id="tick-display">0</div>
+          <div class="tick-label">ticks elapsed</div>
+        </div>
+      </div>
       <div class="section-label">Leaderboard (avg score)</div>
       <div class="leaderboard" id="leaderboard"></div>
     </div>
-  </aside>
-  <main>
-    <div class="payoff-strip">
-      <div class="payoff-card"><span class="payoff-val" style="color:#3fb950">3</span>Both cooperate</div>
-      <div class="payoff-card"><span class="payoff-val" style="color:#f85149">5</span>Defect vs cooperator</div>
-      <div class="payoff-card"><span class="payoff-val" style="color:var(--muted)">1</span>Both defect</div>
-      <div class="payoff-card"><span class="payoff-val" style="color:#f85149">0</span>Cooperate vs defector</div>
-    </div>
-    <div class="world-box"><canvas id="world"></canvas></div>
-    <div class="chart-box">
+
+    <!-- Chart -->
+    <div class="panel-section chart-box">
       <div class="chart-header">
-        <span class="chart-title">Average score per agent over time</span>
+        <span class="chart-title">Avg score per agent over time</span>
         <div class="legend" id="legend"></div>
       </div>
-      <canvas id="chart" height="160"></canvas>
+      <canvas id="chart" height="130"></canvas>
     </div>
-    <div class="bottom-row">
-      <div class="info-box">
-        <div class="section-label" style="margin-bottom:9px">Payoff matrix</div>
-        <table class="matrix-table">
-          <tr><th></th><th>Partner cooperates</th><th>Partner defects</th></tr>
-          <tr><th>Self cooperates</th><td class="hi">+3</td><td class="lo">+0</td></tr>
-          <tr><th>Self defects</th><td class="hi">+5</td><td class="lo">+1</td></tr>
-        </table>
+
+    <!-- Payoff + strategy info -->
+    <div class="panel-section">
+      <div class="payoff-strip" style="margin-bottom:14px">
+        <div class="payoff-card"><span class="payoff-val" style="color:#3fb950">3</span>Both cooperate</div>
+        <div class="payoff-card"><span class="payoff-val" style="color:#f85149">5</span>Defect vs cooperator</div>
+        <div class="payoff-card"><span class="payoff-val" style="color:var(--muted)">1</span>Both defect</div>
+        <div class="payoff-card"><span class="payoff-val" style="color:#f85149">0</span>Cooperate vs defector</div>
       </div>
-      <div class="info-box">
-        <div class="section-label" style="margin-bottom:9px">Strategy guide</div>
-        <p>
-          <strong style="color:#e3b341">Random</strong> — flip a coin each round.<br/>
-          <strong style="color:#3fb950">Cooperate</strong> — always cooperate.<br/>
-          <strong style="color:#f85149">Defect</strong> — always defect.<br/>
-          <strong style="color:#58a6ff">Tit-for-Tat</strong> — mirror the partner's last move.<br/>
-          <strong style="color:#bc8cff">Unforgiving</strong> — cooperate until betrayed; defect forever.<br/>
-          <strong style="color:#ff7b72">Unknown</strong> — defaults to Tit-for-Tat.
-        </p>
+      <div class="info-grid">
+        <div>
+          <div class="section-label" style="margin-bottom:8px">Payoff matrix</div>
+          <table class="matrix-table">
+            <tr><th></th><th>Partner C</th><th>Partner D</th></tr>
+            <tr><th>Self C</th><td class="hi">+3</td><td class="lo">+0</td></tr>
+            <tr><th>Self D</th><td class="hi">+5</td><td class="lo">+1</td></tr>
+          </table>
+        </div>
+        <div>
+          <div class="section-label" style="margin-bottom:8px">Strategies</div>
+          <p>
+            <strong style="color:#e3b341">Random</strong> — coin flip.<br/>
+            <strong style="color:#3fb950">Cooperate</strong> — always C.<br/>
+            <strong style="color:#f85149">Defect</strong> — always D.<br/>
+            <strong style="color:#58a6ff">Tit-for-Tat</strong> — mirror last.<br/>
+            <strong style="color:#bc8cff">Unforgiving</strong> — C until betrayed.
+          </p>
+        </div>
       </div>
     </div>
-  </main>
-</div>
+
+  </div><!-- /panel -->
+</div><!-- /layout -->
+
 <script>
 // ── CONFIG ───────────────────────────────────────────────────────────────────
 const STRATEGIES = [
-  {key:"random",      label:"random",      color:"#e3b341", default:3},
-  {key:"cooperate",   label:"cooperate",   color:"#3fb950", default:5},
-  {key:"defect",      label:"defect",      color:"#f85149", default:5},
-  {key:"tit-for-tat", label:"tit-for-tat", color:"#58a6ff", default:5},
-  {key:"unforgiving", label:"unforgiving", color:"#bc8cff", default:5},
-  {key:"unknown",     label:"unknown",     color:"#ff7b72", default:0},
+  {key:"random",       label:"random",      color:"#e3b341", default:3},
+  {key:"cooperate",    label:"cooperate",   color:"#3fb950", default:5},
+  {key:"defect",       label:"defect",      color:"#f85149", default:5},
+  {key:"tit-for-tat",  label:"tit-for-tat", color:"#58a6ff", default:5},
+  {key:"unforgiving",  label:"unforgiving", color:"#bc8cff", default:5},
+  {key:"unknown",      label:"unknown",     color:"#ff7b72", default:0},
 ];
 const PAYOFF = {"false,false":3,"true,false":5,"false,true":0,"true,true":1};
-const SPEED       = 1.8;   // wander speed px/frame
-const SEEK_SPEED  = 3.0;   // approach speed
-const FLEE_SPEED  = 3.2;   // flee speed
-const MEET_DIST   = 20;    // px — trigger meeting
-const MEET_FRAMES = 45;    // frames to stay paired
-const FLEE_FRAMES = 28;    // frames to flee before wandering
-const ARROW_SIZE  = 11;
+const BASE_SPEED      = 1.8;
+const BASE_SEEK       = 3.0;
+const BASE_FLEE       = 3.2;
+const BASE_MEET_F     = 45;
+const BASE_FLEE_F     = 28;
+const MEET_DIST       = 20;
+const ARROW_SIZE      = 11;
+
+// speed multiplier (1–10, controlled by slider)
+let speedMult = 5;
+
+function getSpeed()     { return BASE_SPEED     * (speedMult / 5); }
+function getSeekSpeed() { return BASE_SEEK      * (speedMult / 5); }
+function getFleeSpeed() { return BASE_FLEE      * (speedMult / 5); }
+function getMeetFrames(){ return Math.max(8,  Math.round(BASE_MEET_F * (5 / speedMult))); }
+function getFleeFrames(){ return Math.max(5,  Math.round(BASE_FLEE_F * (5 / speedMult))); }
 
 // ── GLOBAL STATE ─────────────────────────────────────────────────────────────
-let agents    = [];   // array of agent objects
-let agentById = {};   // id → agent  (THE FIX: lookup by id, not index)
+let agents    = [];
+let agentById = {};
 let simTick   = 0;
 let scoreHistory = {};
 let simRunning = false;
 let simTimer   = null;
+
+// ── SPEED SLIDER ─────────────────────────────────────────────────────────────
+const speedSlider = document.getElementById("speed-slider");
+const speedValEl  = document.getElementById("speed-val");
+speedSlider.addEventListener("input", e => {
+  speedMult = parseInt(e.target.value);
+  speedValEl.textContent = speedMult + "×";
+});
 
 // ── SLIDERS ──────────────────────────────────────────────────────────────────
 const slidersEl = document.getElementById("sliders");
 STRATEGIES.forEach(s => {
   const row = document.createElement("div");
   row.className = "strategy-row";
-  row.innerHTML = `<div class="strategy-dot" style="background:${s.color}"></div>
+  row.innerHTML = `
+    <div class="strategy-dot" style="background:${s.color}"></div>
     <span class="strategy-name">${s.label}</span>
     <input type="range" min="0" max="20" value="${s.default}" id="sl-${s.key}"/>
-    <span class="strategy-val" id="val-${s.key}">${s.default}</span>`;
+    <span class="strategy-val" id="val-${s.key}">${s.default}</span>
+    <span class="strategy-count" id="cnt-${s.key}">–</span>`;
   slidersEl.appendChild(row);
   row.querySelector("input").addEventListener("input", e => {
     document.getElementById(`val-${s.key}`).textContent = e.target.value;
+    updateCountBadges();
+    updateLegend();
   });
 });
+
+function updateCountBadges() {
+  STRATEGIES.forEach(s => {
+    const live = agents.filter(a => a.strategy === s.key).length;
+    const configured = parseInt(document.getElementById(`sl-${s.key}`).value);
+    const el = document.getElementById(`cnt-${s.key}`);
+    if (agents.length > 0) {
+      el.textContent = live;
+      el.style.opacity = live > 0 ? "1" : "0.35";
+    } else {
+      el.textContent = configured > 0 ? configured : "–";
+      el.style.opacity = configured > 0 ? "0.7" : "0.3";
+    }
+  });
+}
+updateCountBadges();
 
 // ── LEGEND ───────────────────────────────────────────────────────────────────
 const legendEl = document.getElementById("legend");
@@ -193,23 +345,35 @@ function updateLegend(){
   });
 }
 
-// ── WORLD CANVAS ─────────────────────────────────────────────────────────────
+// ── WORLD CANVAS (square) ─────────────────────────────────────────────────────
 const worldCanvas = document.getElementById("world");
 const wctx = worldCanvas.getContext("2d");
-function WW(){ return worldCanvas.offsetWidth; }
-function WH(){ return worldCanvas.offsetHeight; }
-function resizeWorld(){
-  worldCanvas.width  = WW() * devicePixelRatio;
-  worldCanvas.height = WH() * devicePixelRatio;
+
+function squareSize() {
+  const col = document.getElementById("canvas-col");
+  const pad = 32; // 16px each side
+  const available = Math.min(col.clientWidth - pad, col.clientHeight - pad);
+  return Math.max(200, available);
+}
+function resizeWorld() {
+  const sz = squareSize();
+  const box = document.getElementById("world-box");
+  box.style.width  = sz + "px";
+  box.style.height = sz + "px";
+  worldCanvas.width  = sz * devicePixelRatio;
+  worldCanvas.height = sz * devicePixelRatio;
+  worldCanvas.style.width  = sz + "px";
+  worldCanvas.style.height = sz + "px";
   wctx.scale(devicePixelRatio, devicePixelRatio);
 }
+function WW(){ return squareSize(); }
+function WH(){ return squareSize(); }
 
 // ── SETUP ─────────────────────────────────────────────────────────────────────
 function setup(){
   agents = []; agentById = {}; simTick = 0; scoreHistory = {};
   STRATEGIES.forEach(s => { scoreHistory[s.key] = []; });
 
-  // Build full list of agent definitions respecting slider counts
   const agentDefs = [];
   STRATEGIES.forEach(s => {
     const n = parseInt(document.getElementById(`sl-${s.key}`).value);
@@ -218,8 +382,7 @@ function setup(){
 
   const total = agentDefs.length;
   const ww = WW(), wh = WH();
-  // Spread evenly using grid layout
-  const cols = Math.max(1, Math.ceil(Math.sqrt(total * ww / wh)));
+  const cols = Math.max(1, Math.ceil(Math.sqrt(total)));
   const rows = Math.max(1, Math.ceil(total / cols));
   const cellW = ww / cols, cellH = wh / rows;
 
@@ -227,28 +390,28 @@ function setup(){
     const col = idx % cols, row = Math.floor(idx / cols);
     const x = cellW * (col + 0.5) + (Math.random() - 0.5) * cellW * 0.55;
     const y = cellH * (row + 0.5) + (Math.random() - 0.5) * cellH * 0.55;
-    const angle = Math.random() * Math.PI * 2;
     const agent = {
-      id: idx,                  // unique integer id
+      id: idx,
       strategy: s.key,
       color: s.color,
       score: 0,
       defectNow: false,
       partnerDefected: false,
-      partnerHistory: {},       // keyed by partner id
+      partnerHistory: {},
       x: Math.max(14, Math.min(ww - 14, x)),
       y: Math.max(14, Math.min(wh - 14, y)),
-      angle,
-      phase: "wander",          // wander | seek | meet | flee
-      partnerId: null,          // id of current partner
+      angle: Math.random() * Math.PI * 2,
+      phase: "wander",
+      partnerId: null,
       meetTimer: 0,
       fleeTimer: 0,
       label: "",
       labelAlpha: 0,
     };
     agents.push(agent);
-    agentById[idx] = agent;     // register in lookup map
+    agentById[idx] = agent;
   });
+  updateCountBadges();
 }
 
 // ── STRATEGY LOGIC ────────────────────────────────────────────────────────────
@@ -258,7 +421,7 @@ function selectAction(a) {
     case "random":    a.defectNow = Math.random() < 0.5; break;
     case "cooperate": a.defectNow = false; break;
     case "defect":    a.defectNow = true;  break;
-    default:          a.defectNow = ph;    break; // tit-for-tat, unforgiving, unknown
+    default:          a.defectNow = ph;    break;
   }
 }
 function updateHistory(a, b) {
@@ -281,10 +444,9 @@ function resolveInteraction(a, b) {
   updateHistory(a, b); updateHistory(b, a);
 }
 
-// ── PAIRING (called each sim tick) ───────────────────────────────────────────
+// ── PAIRING ───────────────────────────────────────────────────────────────────
 function assignPairs() {
   const wanderers = agents.filter(a => a.phase === "wander");
-  // Fisher-Yates shuffle
   for(let i = wanderers.length - 1; i > 0; i--){
     const j = Math.floor(Math.random() * (i + 1));
     [wanderers[i], wanderers[j]] = [wanderers[j], wanderers[i]];
@@ -292,8 +454,7 @@ function assignPairs() {
   for(let i = 0; i + 1 < wanderers.length; i += 2){
     const a = wanderers[i], b = wanderers[i + 1];
     a.phase = "seek"; b.phase = "seek";
-    a.partnerId = b.id;   // store the OTHER agent's .id
-    b.partnerId = a.id;
+    a.partnerId = b.id; b.partnerId = a.id;
   }
 }
 
@@ -301,49 +462,43 @@ function assignPairs() {
 function doSimTick() {
   assignPairs();
   simTick++;
-  // update score history
   STRATEGIES.forEach(s => {
     const g = agents.filter(a => a.strategy === s.key);
     if(g.length) scoreHistory[s.key].push(g.reduce((acc, a) => acc + a.score, 0) / g.length);
   });
   document.getElementById("tick-display").textContent = simTick;
   updateLeaderboard();
+  updateCountBadges();
   resizeChart(); drawChart();
 }
 
-// ── ANIMATION LOOP (60fps, handles movement + drawing) ───────────────────────
+// ── ANIMATION LOOP ────────────────────────────────────────────────────────────
 function animFrame() {
   requestAnimationFrame(animFrame);
   const ww = WW(), wh = WH();
 
   agents.forEach(a => {
-    // fade label
     if(a.labelAlpha > 0) a.labelAlpha -= 0.022;
-
     if(a.phase === "wander") {
       a.angle += (Math.random() - 0.5) * 0.38;
-      a.x = (a.x + Math.cos(a.angle) * SPEED + ww) % ww;
-      a.y = (a.y + Math.sin(a.angle) * SPEED + wh) % wh;
+      a.x = (a.x + Math.cos(a.angle) * getSpeed() + ww) % ww;
+      a.y = (a.y + Math.sin(a.angle) * getSpeed() + wh) % wh;
     }
     else if(a.phase === "seek") {
-      // *** KEY FIX: look up partner by id using agentById map ***
       const partner = agentById[a.partnerId];
       if(!partner) { a.phase = "wander"; a.partnerId = null; return; }
-
       const dx = partner.x - a.x, dy = partner.y - a.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
       a.angle = Math.atan2(dy, dx);
-
       if(dist < MEET_DIST && partner.phase === "seek") {
-        // Both are close — start meeting
         a.phase = "meet"; partner.phase = "meet";
-        a.meetTimer = MEET_FRAMES; partner.meetTimer = MEET_FRAMES;
-        a.angle       =  Math.atan2(dy, dx);
-        partner.angle =  Math.atan2(-dy, -dx);
+        a.meetTimer = getMeetFrames(); partner.meetTimer = getMeetFrames();
+        a.angle = Math.atan2(dy, dx);
+        partner.angle = Math.atan2(-dy, -dx);
         resolveInteraction(a, partner);
       } else if(dist >= MEET_DIST) {
-        a.x = (a.x + Math.cos(a.angle) * SEEK_SPEED + ww) % ww;
-        a.y = (a.y + Math.sin(a.angle) * SEEK_SPEED + wh) % wh;
+        a.x = (a.x + Math.cos(a.angle) * getSeekSpeed() + ww) % ww;
+        a.y = (a.y + Math.sin(a.angle) * getSeekSpeed() + wh) % wh;
       }
     }
     else if(a.phase === "meet") {
@@ -351,22 +506,20 @@ function animFrame() {
       if(a.meetTimer <= 0) {
         a.angle += Math.PI + (Math.random() - 0.5) * 0.9;
         a.phase = "flee";
-        a.fleeTimer = FLEE_FRAMES;
+        a.fleeTimer = getFleeFrames();
         a.partnerId = null;
       }
     }
     else if(a.phase === "flee") {
-      a.x = (a.x + Math.cos(a.angle) * FLEE_SPEED + ww) % ww;
-      a.y = (a.y + Math.sin(a.angle) * FLEE_SPEED + wh) % wh;
+      a.x = (a.x + Math.cos(a.angle) * getFleeSpeed() + ww) % ww;
+      a.y = (a.y + Math.sin(a.angle) * getFleeSpeed() + wh) % wh;
       a.fleeTimer--;
       if(a.fleeTimer <= 0) a.phase = "wander";
     }
   });
 
-  // ── DRAW ──
+  // draw
   wctx.clearRect(0, 0, ww, wh);
-
-  // connection lines for pairs
   const drawn = new Set();
   agents.forEach(a => {
     if(a.partnerId != null && !drawn.has(a.id)){
@@ -376,19 +529,14 @@ function animFrame() {
         wctx.beginPath();
         wctx.moveTo(a.x, a.y); wctx.lineTo(b.x, b.y);
         wctx.strokeStyle = a.phase === "meet"
-          ? "rgba(255,255,255,0.22)"
-          : "rgba(255,255,255,0.07)";
-        wctx.lineWidth = 1;
-        wctx.stroke();
+          ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.07)";
+        wctx.lineWidth = 1; wctx.stroke();
       }
     }
   });
-
-  // agents
   agents.forEach(a => {
     const size = a.phase === "meet" ? ARROW_SIZE + 2 : ARROW_SIZE;
     drawArrow(a.x, a.y, a.angle, a.color, size);
-
     if(a.labelAlpha > 0 && a.label) {
       wctx.save();
       wctx.globalAlpha = Math.max(0, a.labelAlpha);
@@ -402,16 +550,14 @@ function animFrame() {
 
 function drawArrow(x, y, angle, color, size) {
   wctx.save();
-  wctx.translate(x, y);
-  wctx.rotate(angle);
+  wctx.translate(x, y); wctx.rotate(angle);
   wctx.beginPath();
   wctx.moveTo(size, 0);
   wctx.lineTo(-size * 0.65,  size * 0.55);
   wctx.lineTo(-size * 0.28,  0);
   wctx.lineTo(-size * 0.65, -size * 0.55);
   wctx.closePath();
-  wctx.fillStyle = color;
-  wctx.fill();
+  wctx.fillStyle = color; wctx.fill();
   wctx.restore();
 }
 
@@ -426,7 +572,7 @@ function resizeChart(){
 function drawChart(){
   const W = chartCanvas.offsetWidth, H = chartCanvas.offsetHeight;
   cctx.clearRect(0, 0, W, H);
-  const PAD = {top:8,right:14,bottom:26,left:40};
+  const PAD = {top:8,right:14,bottom:26,left:36};
   const pw = W-PAD.left-PAD.right, ph = H-PAD.top-PAD.bottom;
   let maxVal = 10;
   STRATEGIES.forEach(s => scoreHistory[s.key].forEach(v => { if(v > maxVal) maxVal = v; }));
@@ -485,7 +631,7 @@ function doReset(){
   resizeChart(); cctx.clearRect(0,0,chartCanvas.offsetWidth,chartCanvas.offsetHeight);
   document.getElementById("tick-display").textContent=0;
   document.getElementById("leaderboard").innerHTML="";
-  updateLegend();
+  updateLegend(); updateCountBadges();
 }
 function doStep(){
   if(!agents.length) setup();
@@ -506,7 +652,6 @@ function doRun(){
   document.getElementById("btn-step").disabled=true;
   function loop(){
     if(!simRunning||(simTick-startTick)>=maxTicks){ stopSim(); return; }
-    // wait until agents finish current meetings before next tick
     const busy=agents.filter(a=>a.phase==="seek"||a.phase==="meet").length;
     if(busy===0) doSimTick();
     simTimer=setTimeout(loop,50);
