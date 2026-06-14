@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Iterated Prisoner's Dilemma</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg:        #0d1117;
+    --surface:   #161b22;
+    --border:    #21262d;
+    --text:      #e6edf3;
+    --muted:     #7d8590;
+    --random:    #e3b341;
+    --cooperate: #3fb950;
+    --defect:    #f85149;
+    --tft:       #58a6ff;
+    --unforgiving:#bc8cff;
+    --unknown:   #ff7b72;
+    --accent:    #58a6ff;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+  header h1 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+  header span {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    min-height: calc(100vh - 61px);
+  }
+
+  /* SIDEBAR */
+  aside {
+    border-right: 1px solid var(--border);
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .strategy-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .strategy-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .strategy-name {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    width: 88px;
+    flex-shrink: 0;
+    color: var(--text);
+  }
+  .strategy-row input[type=range] {
+    flex: 1;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .strategy-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    width: 20px;
+    text-align: right;
+    color: var(--muted);
+  }
+
+  .sim-controls { display: flex; flex-direction: column; gap: 8px; }
+  .row-two { display: flex; gap: 8px; }
+
+  .tick-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .tick-control label {
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .tick-control input[type=number] {
+    width: 64px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+
+  button {
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 14px;
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+  button:hover { opacity: .85; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+
+  #btn-run   { background: var(--accent); color: #0d1117; flex: 1; }
+  #btn-step  { background: var(--surface); color: var(--text); border: 1px solid var(--border); flex: 1; }
+  #btn-reset { background: var(--surface); color: var(--muted); border: 1px solid var(--border); width: 100%; }
+
+  .stat-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .tick-counter {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .tick-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .leaderboard { display: flex; flex-direction: column; gap: 6px; }
+  .lb-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    background: var(--bg);
+    border: 1px solid transparent;
+    transition: border-color .2s;
+  }
+  .lb-row.leader { border-color: var(--border); }
+  .lb-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .lb-name { font-family: 'IBM Plex Mono', monospace; font-size: 11px; flex: 1; color: var(--text); }
+  .lb-score { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+  .lb-bar-wrap { width: 60px; height: 3px; background: var(--border); border-radius: 2px; }
+  .lb-bar { height: 3px; border-radius: 2px; transition: width .3s; }
+
+  /* MAIN */
+  main { padding: 28px 32px; display: flex; flex-direction: column; gap: 28px; }
+
+  .payoff-strip {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .payoff-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .payoff-val { font-size: 20px; font-weight: 600; color: var(--text); }
+
+  .chart-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .chart-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .legend {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .legend-line { width: 16px; height: 2px; border-radius: 1px; }
+
+  canvas { display: block; width: 100%; }
+
+  .bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+  .matrix-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+  }
+  .matrix-table th, .matrix-table td {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    text-align: center;
+  }
+  .matrix-table th { background: var(--bg); color: var(--muted); font-weight: 400; }
+  .matrix-table td.hi { color: #3fb950; }
+  .matrix-table td.lo { color: #f85149; }
+
+  .info-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .info-box p { font-size: 12px; color: var(--muted); line-height: 1.7; }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    aside { border-right: none; border-bottom: 1px solid var(--border); }
+    .bottom-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Iterated Prisoner's Dilemma</h1>
+  <span>// agent-based simulation · NetLogo → Python → browser</span>
+</header>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <aside>
+    <div>
+      <div class="section-label">Agents per strategy</div>
+      <div id="sliders"></div>
+    </div>
+
+    <div>
+      <div class="section-label">Simulation</div>
+      <div class="sim-controls">
+        <div class="tick-control">
+          <label>Ticks to run:</label>
+          <input type="number" id="tick-count" value="100" min="1" max="2000"/>
+        </div>
+        <div class="row-two">
+          <button id="btn-run">▶ Run</button>
+          <button id="btn-step">Step</button>
+        </div>
+        <button id="btn-reset">↺ Reset</button>
+      </div>
+    </div>
+
+    <div class="stat-block">
+      <div class="tick-counter" id="tick-display">0</div>
+      <div class="tick-label">ticks elapsed</div>
+    </div>
+
+    <div>
+      <div class="section-label">Leaderboard (avg score)</div>
+      <div class="leaderboard" id="leaderboard"></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+    <div class="payoff-strip">
+      <div class="payoff-card"><span class="payoff-val" style="color:var(--cooperate)">3</span> Both cooperate</div>
+      <div class="payoff-card"><span class="payoff-val" style="color:var(--defect)">5</span> Defect vs cooperator</div>
+      <div class="payoff-card"><span class="payoff-val" style="color:var(--muted)">1</span> Both defect</div>
+      <div class="payoff-card"><span class="payoff-val" style="color:var(--defect)">0</span> Cooperate vs defector</div>
+    </div>
+
+    <div class="chart-box">
+      <div class="chart-header">
+        <span class="chart-title">Average score per agent over time</span>
+        <div class="legend" id="legend"></div>
+      </div>
+      <canvas id="chart" height="220"></canvas>
+    </div>
+
+    <div class="bottom-row">
+      <div class="info-box">
+        <div class="section-label" style="margin-bottom:10px">Payoff matrix</div>
+        <table class="matrix-table">
+          <tr>
+            <th></th><th>Partner cooperates</th><th>Partner defects</th>
+          </tr>
+          <tr>
+            <th>Self cooperates</th>
+            <td class="hi">+3</td>
+            <td class="lo">+0</td>
+          </tr>
+          <tr>
+            <th>Self defects</th>
+            <td class="hi">+5</td>
+            <td class="lo">+1</td>
+          </tr>
+        </table>
+      </div>
+      <div class="info-box">
+        <div class="section-label" style="margin-bottom:10px">Strategy guide</div>
+        <p>
+          <strong style="color:var(--random)">Random</strong> — flip a coin each round.<br/>
+          <strong style="color:var(--cooperate)">Cooperate</strong> — always cooperate.<br/>
+          <strong style="color:var(--defect)">Defect</strong> — always defect.<br/>
+          <strong style="color:var(--tft)">Tit-for-Tat</strong> — cooperate first; then mirror the partner's last move.<br/>
+          <strong style="color:var(--unforgiving)">Unforgiving</strong> — cooperate until betrayed; defect forever after.<br/>
+          <strong style="color:var(--unknown)">Unknown</strong> — defaults to Tit-for-Tat (customise in the Python source).
+        </p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ─── COLOURS & STRATEGY CONFIG ───────────────────────────────────────────────
+const STRATEGIES = [
+  { key: "random",      label: "random",      color: "#e3b341", default: 3 },
+  { key: "cooperate",   label: "cooperate",   color: "#3fb950", default: 5 },
+  { key: "defect",      label: "defect",      color: "#f85149", default: 5 },
+  { key: "tit-for-tat", label: "tit-for-tat", color: "#58a6ff", default: 5 },
+  { key: "unforgiving", label: "unforgiving", color: "#bc8cff", default: 5 },
+  { key: "unknown",     label: "unknown",     color: "#ff7b72", default: 0 },
+];
+
+const PAYOFF = {
+  "false,false": 3,  // self coop, partner coop
+  "true,false":  5,  // self defect, partner coop
+  "false,true":  0,  // self coop, partner defect
+  "true,true":   1,  // both defect
+};
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let turtles = [];
+let tick = 0;
+let history = {}; // key → [avg score per tick]
+let running = false;
+let runTimer = null;
+
+// ─── BUILD SLIDERS ────────────────────────────────────────────────────────────
+const slidersEl = document.getElementById("sliders");
+STRATEGIES.forEach(s => {
+  const row = document.createElement("div");
+  row.className = "strategy-row";
+  row.innerHTML = `
+    <div class="strategy-dot" style="background:${s.color}"></div>
+    <span class="strategy-name">${s.label}</span>
+    <input type="range" min="0" max="20" value="${s.default}" id="sl-${s.key}"/>
+    <span class="strategy-val" id="val-${s.key}">${s.default}</span>
+  `;
+  slidersEl.appendChild(row);
+  const inp = row.querySelector("input");
+  inp.addEventListener("input", () => {
+    document.getElementById(`val-${s.key}`).textContent = inp.value;
+  });
+});
+
+// ─── LEGEND ───────────────────────────────────────────────────────────────────
+const legendEl = document.getElementById("legend");
+STRATEGIES.forEach(s => {
+  const item = document.createElement("div");
+  item.className = "legend-item";
+  item.id = `leg-${s.key}`;
+  item.innerHTML = `<div class="legend-line" style="background:${s.color}"></div>${s.label}`;
+  item.style.display = "none";
+  legendEl.appendChild(item);
+});
+
+// ─── SIMULATION CORE ─────────────────────────────────────────────────────────
+function setup() {
+  turtles = [];
+  tick = 0;
+  history = {};
+  STRATEGIES.forEach(s => { history[s.key] = []; });
+
+  let id = 0;
+  STRATEGIES.forEach(s => {
+    const n = parseInt(document.getElementById(`sl-${s.key}`).value);
+    for (let i = 0; i < n; i++) {
+      turtles.push({
+        id: id++,
+        strategy: s.key,
+        score: 0,
+        partnered: false,
+        partner: null,
+        defectNow: false,
+        partnerDefected: false,
+        partnerHistory: {},   // id → bool
+      });
+    }
+  });
+}
+
+function selectAction(t) {
+  const ph = t.partnerHistory[t.partner.id] || false;
+  switch (t.strategy) {
+    case "random":      t.defectNow = Math.random() < 0.5; break;
+    case "cooperate":   t.defectNow = false; break;
+    case "defect":      t.defectNow = true;  break;
+    case "tit-for-tat": t.defectNow = ph;    break;
+    case "unforgiving": t.defectNow = ph;    break;
+    case "unknown":     t.defectNow = ph;    break;
+  }
+}
+
+function updateHistory(t) {
+  switch (t.strategy) {
+    case "tit-for-tat":
+    case "unknown":
+      t.partnerHistory[t.partner.id] = t.partnerDefected;
+      break;
+    case "unforgiving":
+      if (t.partnerDefected) t.partnerHistory[t.partner.id] = true;
+      break;
+  }
+}
+
+function goTick() {
+  // release partners
+  turtles.forEach(t => { t.partnered = false; t.partner = null; });
+
+  // shuffle & pair
+  const arr = [...turtles].sort(() => Math.random() - 0.5);
+  for (let i = 0; i + 1 < arr.length; i += 2) {
+    arr[i].partnered     = true; arr[i].partner     = arr[i+1];
+    arr[i+1].partnered   = true; arr[i+1].partner   = arr[i];
+  }
+
+  const paired = turtles.filter(t => t.partnered);
+  paired.forEach(selectAction);
+  paired.forEach(t => {
+    t.partnerDefected = t.partner.defectNow;
+    t.score += PAYOFF[`${t.defectNow},${t.partnerDefected}`];
+  });
+  paired.forEach(updateHistory);
+  tick++;
+}
+
+function avgScores() {
+  const out = {};
+  STRATEGIES.forEach(s => {
+    const group = turtles.filter(t => t.strategy === s.key);
+    out[s.key] = group.length
+      ? group.reduce((a, t) => a + t.score, 0) / group.length
+      : null;
+  });
+  return out;
+}
+
+// ─── CHART ───────────────────────────────────────────────────────────────────
+const canvas = document.getElementById("chart");
+const ctx = canvas.getContext("2d");
+
+function resizeCanvas() {
+  canvas.width  = canvas.offsetWidth  * devicePixelRatio;
+  canvas.height = canvas.offsetHeight * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+}
+
+function drawChart() {
+  const W = canvas.offsetWidth;
+  const H = canvas.offsetHeight;
+  ctx.clearRect(0, 0, W, H);
+
+  const PAD = { top: 10, right: 20, bottom: 30, left: 48 };
+  const pw = W - PAD.left - PAD.right;
+  const ph = H - PAD.top - PAD.bottom;
+
+  // find max
+  let maxVal = 10;
+  STRATEGIES.forEach(s => {
+    history[s.key].forEach(v => { if (v > maxVal) maxVal = v; });
+  });
+  maxVal = Math.ceil(maxVal / 10) * 10 || 10;
+
+  const totalTicks = Math.max(...STRATEGIES.map(s => history[s.key].length), 1);
+
+  // grid
+  ctx.strokeStyle = "#21262d";
+  ctx.lineWidth   = 1;
+  ctx.fillStyle   = "#7d8590";
+  ctx.font        = `10px 'IBM Plex Mono', monospace`;
+  ctx.textAlign   = "right";
+  for (let i = 0; i <= 5; i++) {
+    const y = PAD.top + ph - (i / 5) * ph;
+    ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(PAD.left + pw, y); ctx.stroke();
+    ctx.fillText(Math.round((i / 5) * maxVal), PAD.left - 6, y + 3);
+  }
+  // x axis labels
+  ctx.textAlign = "center";
+  const steps = Math.min(totalTicks, 10);
+  for (let i = 0; i <= steps; i++) {
+    const t2 = Math.round((i / steps) * (totalTicks - 1));
+    const x = PAD.left + (t2 / Math.max(totalTicks - 1, 1)) * pw;
+    ctx.fillText(t2, x, H - PAD.bottom + 14);
+  }
+
+  // lines
+  STRATEGIES.forEach(s => {
+    const data = history[s.key];
+    if (!data.length) return;
+    const col = STRATEGIES.find(x => x.key === s.key).color;
+    ctx.strokeStyle = col;
+    ctx.lineWidth   = 2;
+    ctx.lineJoin    = "round";
+    ctx.beginPath();
+    data.forEach((v, i) => {
+      const x = PAD.left + (i / Math.max(totalTicks - 1, 1)) * pw;
+      const y = PAD.top  + ph - (v / maxVal) * ph;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  });
+}
+
+// ─── LEADERBOARD ─────────────────────────────────────────────────────────────
+function updateLeaderboard(scores) {
+  const el = document.getElementById("leaderboard");
+  el.innerHTML = "";
+
+  const entries = STRATEGIES
+    .map(s => ({ ...s, avg: scores[s.key] }))
+    .filter(s => s.avg !== null)
+    .sort((a, b) => b.avg - a.avg);
+
+  const max = entries[0]?.avg || 1;
+
+  entries.forEach((s, i) => {
+    const row = document.createElement("div");
+    row.className = "lb-row" + (i === 0 ? " leader" : "");
+    row.innerHTML = `
+      <div class="lb-dot" style="background:${s.color}"></div>
+      <span class="lb-name">${s.label}</span>
+      <div class="lb-bar-wrap">
+        <div class="lb-bar" style="background:${s.color};width:${(s.avg/max)*100}%"></div>
+      </div>
+      <span class="lb-score">${s.avg.toFixed(1)}</span>
+    `;
+    el.appendChild(row);
+  });
+}
+
+// ─── LEGEND VISIBILITY ────────────────────────────────────────────────────────
+function updateLegend() {
+  STRATEGIES.forEach(s => {
+    const n = parseInt(document.getElementById(`sl-${s.key}`).value);
+    document.getElementById(`leg-${s.key}`).style.display = n > 0 ? "flex" : "none";
+  });
+}
+
+// ─── RENDER LOOP ──────────────────────────────────────────────────────────────
+function render() {
+  const scores = avgScores();
+  STRATEGIES.forEach(s => {
+    if (scores[s.key] !== null) history[s.key].push(scores[s.key]);
+  });
+  resizeCanvas();
+  drawChart();
+  updateLeaderboard(scores);
+  document.getElementById("tick-display").textContent = tick;
+}
+
+// ─── CONTROLS ────────────────────────────────────────────────────────────────
+function doReset() {
+  stopRun();
+  setup();
+  STRATEGIES.forEach(s => { history[s.key] = []; });
+  resizeCanvas();
+  ctx.clearRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+  document.getElementById("tick-display").textContent = 0;
+  document.getElementById("leaderboard").innerHTML = "";
+  updateLegend();
+}
+
+function doStep() {
+  if (!turtles.length) setup();
+  goTick();
+  render();
+}
+
+function stopRun() {
+  running = false;
+  clearTimeout(runTimer);
+  document.getElementById("btn-run").textContent = "▶ Run";
+  document.getElementById("btn-step").disabled = false;
+}
+
+function doRun() {
+  if (running) { stopRun(); return; }
+  if (!turtles.length) setup();
+
+  const maxTicks = parseInt(document.getElementById("tick-count").value) || 100;
+  const startTick = tick;
+
+  running = true;
+  document.getElementById("btn-run").textContent = "⏸ Pause";
+  document.getElementById("btn-step").disabled = true;
+
+  function loop() {
+    if (!running || (tick - startTick) >= maxTicks) { stopRun(); return; }
+    goTick();
+    render();
+    runTimer = setTimeout(loop, 30);
+  }
+  loop();
+}
+
+document.getElementById("btn-run").addEventListener("click", doRun);
+document.getElementById("btn-step").addEventListener("click", doStep);
+document.getElementById("btn-reset").addEventListener("click", doReset);
+
+window.addEventListener("resize", () => { resizeCanvas(); drawChart(); });
+resizeCanvas();
+updateLegend();
+</script>
+</body>
+</html>
