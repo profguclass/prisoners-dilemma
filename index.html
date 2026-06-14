@@ -6,155 +6,74 @@
 <title>Iterated Prisoner's Dilemma</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
-  :root {
-    --bg:        #0d1117;
-    --surface:   #161b22;
-    --border:    #21262d;
-    --text:      #e6edf3;
-    --muted:     #7d8590;
-    --accent:    #58a6ff;
-  }
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 14px;
-    min-height: 100vh;
-  }
-  header {
-    border-bottom: 1px solid var(--border);
-    padding: 18px 28px;
-    display: flex;
-    align-items: baseline;
-    gap: 14px;
-  }
-  header h1 {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 17px;
-    font-weight: 600;
-    letter-spacing: -.5px;
-  }
-  header span { font-size: 11px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
-
-  .layout {
-    display: grid;
-    grid-template-columns: 260px 1fr;
-    min-height: calc(100vh - 57px);
-  }
-
-  /* SIDEBAR */
-  aside {
-    border-right: 1px solid var(--border);
-    padding: 20px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    overflow-y: auto;
-  }
-  .section-label {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 10px;
-  }
-  .strategy-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-  .strategy-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .strategy-name { font-family: 'IBM Plex Mono', monospace; font-size: 11px; width: 82px; flex-shrink: 0; }
-  .strategy-row input[type=range] { flex: 1; accent-color: var(--accent); cursor: pointer; }
-  .strategy-val { font-family: 'IBM Plex Mono', monospace; font-size: 11px; width: 18px; text-align: right; color: var(--muted); }
-
-  .sim-controls { display: flex; flex-direction: column; gap: 7px; }
-  .row-two { display: flex; gap: 7px; }
-  .tick-control { display: flex; align-items: center; gap: 8px; }
-  .tick-control label { font-size: 11px; color: var(--muted); white-space: nowrap; }
-  .tick-control input[type=number] {
-    width: 60px; background: var(--border); border: 1px solid var(--border);
-    border-radius: 4px; color: var(--text);
-    font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 4px 7px;
-  }
-  button {
-    font-family: 'IBM Plex Sans', sans-serif; font-size: 12px; font-weight: 500;
-    border: none; border-radius: 6px; padding: 7px 12px; cursor: pointer; transition: opacity .15s;
-  }
-  button:hover { opacity: .82; }
-  button:disabled { opacity: .35; cursor: not-allowed; }
-  #btn-run   { background: var(--accent); color: #0d1117; flex: 1; }
-  #btn-step  { background: var(--surface); color: var(--text); border: 1px solid var(--border); flex: 1; }
-  #btn-reset { background: var(--surface); color: var(--muted); border: 1px solid var(--border); width: 100%; }
-
-  .stat-block { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
-  .tick-counter { font-family: 'IBM Plex Mono', monospace; font-size: 26px; font-weight: 600; color: var(--accent); line-height: 1; }
-  .tick-label { font-size: 10px; color: var(--muted); margin-top: 2px; }
-
-  .leaderboard { display: flex; flex-direction: column; gap: 5px; }
-  .lb-row {
-    display: flex; align-items: center; gap: 7px; padding: 5px 7px;
-    border-radius: 4px; background: var(--bg); border: 1px solid transparent; transition: border-color .2s;
-  }
-  .lb-row.leader { border-color: var(--border); }
-  .lb-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-  .lb-name { font-family: 'IBM Plex Mono', monospace; font-size: 10px; flex: 1; }
-  .lb-bar-wrap { width: 50px; height: 3px; background: var(--border); border-radius: 2px; }
-  .lb-bar { height: 3px; border-radius: 2px; transition: width .3s; }
-  .lb-score { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); }
-
-  /* MAIN */
-  main { padding: 20px 24px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
-
-  .payoff-strip { display: flex; gap: 10px; flex-wrap: wrap; }
-  .payoff-card {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 7px;
-    padding: 8px 14px; display: flex; align-items: center; gap: 7px;
-    font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted);
-  }
-  .payoff-val { font-size: 18px; font-weight: 600; color: var(--text); }
-
-  /* WORLD CANVAS */
-  .world-box {
-    background: #000;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    overflow: hidden;
-    position: relative;
-  }
-  .world-box canvas { display: block; width: 100%; height: 420px; }
-
-  /* CHART */
-  .chart-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
-  .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-  .chart-title { font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
-  .legend { display: flex; gap: 12px; flex-wrap: wrap; }
-  .legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
-  .legend-line { width: 14px; height: 2px; border-radius: 1px; }
-  #chart { display: block; width: 100%; }
-
-  .bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-  .matrix-table { width: 100%; border-collapse: collapse; font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
-  .matrix-table th, .matrix-table td { padding: 7px 10px; border: 1px solid var(--border); text-align: center; }
-  .matrix-table th { background: var(--bg); color: var(--muted); font-weight: 400; }
-  .matrix-table td.hi { color: #3fb950; }
-  .matrix-table td.lo { color: #f85149; }
-  .info-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
-  .info-box p { font-size: 11px; color: var(--muted); line-height: 1.75; }
-
-  @media (max-width: 900px) {
-    .layout { grid-template-columns: 1fr; }
-    aside { border-right: none; border-bottom: 1px solid var(--border); }
-    .bottom-row { grid-template-columns: 1fr; }
-  }
+:root {
+  --bg:#0d1117; --surface:#161b22; --border:#21262d;
+  --text:#e6edf3; --muted:#7d8590; --accent:#58a6ff;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:14px;min-height:100vh;}
+header{border-bottom:1px solid var(--border);padding:16px 24px;display:flex;align-items:baseline;gap:12px;}
+header h1{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;}
+header span{font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+.layout{display:grid;grid-template-columns:250px 1fr;min-height:calc(100vh - 53px);}
+aside{border-right:1px solid var(--border);padding:18px 14px;display:flex;flex-direction:column;gap:18px;overflow-y:auto;}
+.section-label{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.strategy-row{display:flex;align-items:center;gap:7px;margin-bottom:7px;}
+.strategy-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.strategy-name{font-family:'IBM Plex Mono',monospace;font-size:11px;width:80px;flex-shrink:0;}
+.strategy-row input[type=range]{flex:1;accent-color:var(--accent);cursor:pointer;}
+.strategy-val{font-family:'IBM Plex Mono',monospace;font-size:11px;width:18px;text-align:right;color:var(--muted);}
+.sim-controls{display:flex;flex-direction:column;gap:6px;}
+.row-two{display:flex;gap:6px;}
+.tick-control{display:flex;align-items:center;gap:7px;}
+.tick-control label{font-size:11px;color:var(--muted);white-space:nowrap;}
+.tick-control input[type=number]{width:58px;background:var(--border);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:3px 6px;}
+button{font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:500;border:none;border-radius:6px;padding:7px 11px;cursor:pointer;transition:opacity .15s;}
+button:hover{opacity:.82;}
+button:disabled{opacity:.35;cursor:not-allowed;}
+#btn-run{background:var(--accent);color:#0d1117;flex:1;}
+#btn-step{background:var(--surface);color:var(--text);border:1px solid var(--border);flex:1;}
+#btn-reset{background:var(--surface);color:var(--muted);border:1px solid var(--border);width:100%;}
+.stat-block{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;}
+.tick-counter{font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:600;color:var(--accent);line-height:1;}
+.tick-label{font-size:10px;color:var(--muted);margin-top:2px;}
+.leaderboard{display:flex;flex-direction:column;gap:5px;}
+.lb-row{display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:4px;background:var(--bg);border:1px solid transparent;transition:border-color .2s;}
+.lb-row.leader{border-color:var(--border);}
+.lb-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.lb-name{font-family:'IBM Plex Mono',monospace;font-size:10px;flex:1;}
+.lb-bar-wrap{width:46px;height:3px;background:var(--border);border-radius:2px;}
+.lb-bar{height:3px;border-radius:2px;transition:width .3s;}
+.lb-score{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);}
+main{padding:18px 22px;display:flex;flex-direction:column;gap:18px;overflow-y:auto;}
+.payoff-strip{display:flex;gap:8px;flex-wrap:wrap;}
+.payoff-card{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 12px;display:flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);}
+.payoff-val{font-size:16px;font-weight:600;color:var(--text);}
+.world-box{background:#000;border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+#world{display:block;width:100%;height:380px;}
+.chart-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;}
+.chart-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.chart-title{font-family:'IBM Plex Mono',monospace;font-size:12px;}
+.legend{display:flex;gap:10px;flex-wrap:wrap;}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+.legend-line{width:13px;height:2px;border-radius:1px;}
+#chart{display:block;width:100%;}
+.bottom-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.info-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;}
+.matrix-table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px;}
+.matrix-table th,.matrix-table td{padding:6px 9px;border:1px solid var(--border);text-align:center;}
+.matrix-table th{background:var(--bg);color:var(--muted);font-weight:400;}
+.matrix-table td.hi{color:#3fb950;}
+.matrix-table td.lo{color:#f85149;}
+.info-box p{font-size:11px;color:var(--muted);line-height:1.75;}
+@media(max-width:860px){.layout{grid-template-columns:1fr;}aside{border-right:none;border-bottom:1px solid var(--border);}.bottom-row{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
-
 <header>
   <h1>Iterated Prisoner's Dilemma</h1>
   <span>// agent-based simulation · NetLogo → Python → browser</span>
 </header>
-
 <div class="layout">
   <aside>
     <div>
@@ -184,32 +103,24 @@
       <div class="leaderboard" id="leaderboard"></div>
     </div>
   </aside>
-
   <main>
     <div class="payoff-strip">
-      <div class="payoff-card"><span class="payoff-val" style="color:#3fb950">3</span> Both cooperate</div>
-      <div class="payoff-card"><span class="payoff-val" style="color:#f85149">5</span> Defect vs cooperator</div>
-      <div class="payoff-card"><span class="payoff-val" style="color:var(--muted)">1</span> Both defect</div>
-      <div class="payoff-card"><span class="payoff-val" style="color:#f85149">0</span> Cooperate vs defector</div>
+      <div class="payoff-card"><span class="payoff-val" style="color:#3fb950">3</span>Both cooperate</div>
+      <div class="payoff-card"><span class="payoff-val" style="color:#f85149">5</span>Defect vs cooperator</div>
+      <div class="payoff-card"><span class="payoff-val" style="color:var(--muted)">1</span>Both defect</div>
+      <div class="payoff-card"><span class="payoff-val" style="color:#f85149">0</span>Cooperate vs defector</div>
     </div>
-
-    <!-- AGENT WORLD -->
-    <div class="world-box">
-      <canvas id="world"></canvas>
-    </div>
-
-    <!-- SCORE CHART -->
+    <div class="world-box"><canvas id="world"></canvas></div>
     <div class="chart-box">
       <div class="chart-header">
         <span class="chart-title">Average score per agent over time</span>
         <div class="legend" id="legend"></div>
       </div>
-      <canvas id="chart" height="180"></canvas>
+      <canvas id="chart" height="160"></canvas>
     </div>
-
     <div class="bottom-row">
       <div class="info-box">
-        <div class="section-label" style="margin-bottom:10px">Payoff matrix</div>
+        <div class="section-label" style="margin-bottom:9px">Payoff matrix</div>
         <table class="matrix-table">
           <tr><th></th><th>Partner cooperates</th><th>Partner defects</th></tr>
           <tr><th>Self cooperates</th><td class="hi">+3</td><td class="lo">+0</td></tr>
@@ -217,7 +128,7 @@
         </table>
       </div>
       <div class="info-box">
-        <div class="section-label" style="margin-bottom:10px">Strategy guide</div>
+        <div class="section-label" style="margin-bottom:9px">Strategy guide</div>
         <p>
           <strong style="color:#e3b341">Random</strong> — flip a coin each round.<br/>
           <strong style="color:#3fb950">Cooperate</strong> — always cooperate.<br/>
@@ -230,39 +141,45 @@
     </div>
   </main>
 </div>
-
 <script>
-// ── STRATEGY CONFIG ──────────────────────────────────────────────────────────
+// ── CONFIG ───────────────────────────────────────────────────────────────────
 const STRATEGIES = [
-  { key:"random",      label:"random",      color:"#e3b341", default:3 },
-  { key:"cooperate",   label:"cooperate",   color:"#3fb950", default:5 },
-  { key:"defect",      label:"defect",      color:"#f85149", default:5 },
-  { key:"tit-for-tat", label:"tit-for-tat", color:"#58a6ff", default:5 },
-  { key:"unforgiving", label:"unforgiving", color:"#bc8cff", default:5 },
-  { key:"unknown",     label:"unknown",     color:"#ff7b72", default:0 },
+  {key:"random",      label:"random",      color:"#e3b341", default:3},
+  {key:"cooperate",   label:"cooperate",   color:"#3fb950", default:5},
+  {key:"defect",      label:"defect",      color:"#f85149", default:5},
+  {key:"tit-for-tat", label:"tit-for-tat", color:"#58a6ff", default:5},
+  {key:"unforgiving", label:"unforgiving", color:"#bc8cff", default:5},
+  {key:"unknown",     label:"unknown",     color:"#ff7b72", default:0},
 ];
+const PAYOFF = {"false,false":3,"true,false":5,"false,true":0,"true,true":1};
+const SPEED = 1.8;       // pixels per frame while wandering
+const MEET_DIST = 22;    // pixels — how close before they "meet"
+const MEET_FRAMES = 40;  // frames to stay paired before separating
+const ARROW_SIZE = 11;
 
-const PAYOFF = {
-  "false,false":3, "true,false":5, "false,true":0, "true,true":1
-};
+// ── STATE ────────────────────────────────────────────────────────────────────
+let agents = [];          // visual+logic objects
+let simTick = 0;
+let scoreHistory = {};
+let simRunning = false;
+let simTimer = null;
 
-// ── SIMULATION STATE ─────────────────────────────────────────────────────────
-let turtles=[], tick=0, history={}, running=false, runTimer=null;
+// ── PHASE SYSTEM ─────────────────────────────────────────────────────────────
+// Each agent has a phase:
+//   "wander"  — moving freely, looking for a partner
+//   "seek"    — moving toward assigned partner
+//   "meet"    — stopped, facing partner, interaction happening
+//   "flee"    — moving away briefly after separation
+const SEEK_SPEED  = 2.8;
+const FLEE_SPEED  = 3.0;
+const FLEE_FRAMES = 25;
 
-// ── VISUAL POSITIONS (for world canvas) ──────────────────────────────────────
-// Each turtle has: x, y, angle, vx, vy, label, labelAlpha
-const W_W = () => worldCanvas.offsetWidth;
-const W_H = () => worldCanvas.offsetHeight;
-
-function randRange(a,b){ return a + Math.random()*(b-a); }
-
-// ── BUILD SLIDERS ─────────────────────────────────────────────────────────────
+// ── SLIDERS ──────────────────────────────────────────────────────────────────
 const slidersEl = document.getElementById("sliders");
 STRATEGIES.forEach(s => {
   const row = document.createElement("div");
   row.className = "strategy-row";
-  row.innerHTML = `
-    <div class="strategy-dot" style="background:${s.color}"></div>
+  row.innerHTML = `<div class="strategy-dot" style="background:${s.color}"></div>
     <span class="strategy-name">${s.label}</span>
     <input type="range" min="0" max="20" value="${s.default}" id="sl-${s.key}"/>
     <span class="strategy-val" id="val-${s.key}">${s.default}</span>`;
@@ -272,236 +189,288 @@ STRATEGIES.forEach(s => {
   });
 });
 
-// ── LEGEND ────────────────────────────────────────────────────────────────────
+// ── LEGEND ───────────────────────────────────────────────────────────────────
 const legendEl = document.getElementById("legend");
 STRATEGIES.forEach(s => {
   const el = document.createElement("div");
-  el.className = "legend-item"; el.id = `leg-${s.key}`; el.style.display="none";
-  el.innerHTML = `<div class="legend-line" style="background:${s.color}"></div>${s.label}`;
+  el.className="legend-item"; el.id=`leg-${s.key}`; el.style.display="none";
+  el.innerHTML=`<div class="legend-line" style="background:${s.color}"></div>${s.label}`;
   legendEl.appendChild(el);
 });
+function updateLegend(){
+  STRATEGIES.forEach(s=>{
+    const n=parseInt(document.getElementById(`sl-${s.key}`).value);
+    document.getElementById(`leg-${s.key}`).style.display=n>0?"flex":"none";
+  });
+}
 
-// ── SETUP ─────────────────────────────────────────────────────────────────────
-function setup() {
-  turtles=[]; tick=0; history={};
-  STRATEGIES.forEach(s=>{ history[s.key]=[]; });
-  let id=0;
-  // collect all agents first to spread them evenly
+// ── WORLD CANVAS ─────────────────────────────────────────────────────────────
+const worldCanvas = document.getElementById("world");
+const wctx = worldCanvas.getContext("2d");
+function WW(){ return worldCanvas.offsetWidth; }
+function WH(){ return worldCanvas.offsetHeight; }
+
+function resizeWorld(){
+  worldCanvas.width  = WW() * devicePixelRatio;
+  worldCanvas.height = WH() * devicePixelRatio;
+  wctx.scale(devicePixelRatio, devicePixelRatio);
+}
+
+// ── SETUP ────────────────────────────────────────────────────────────────────
+function setup(){
+  agents=[]; simTick=0; scoreHistory={};
+  STRATEGIES.forEach(s=>{ scoreHistory[s.key]=[]; });
+
   const agentDefs=[];
-  STRATEGIES.forEach(s => {
-    const n = parseInt(document.getElementById(`sl-${s.key}`).value);
+  STRATEGIES.forEach(s=>{
+    const n=parseInt(document.getElementById(`sl-${s.key}`).value);
     for(let i=0;i<n;i++) agentDefs.push(s);
   });
-  const total = agentDefs.length;
-  agentDefs.forEach((s, idx) => {
-    // evenly distribute using a grid with jitter
-    const cols = Math.ceil(Math.sqrt(total * (W_W()/W_H())));
-    const rows = Math.ceil(total/cols);
-    const col = idx % cols, row = Math.floor(idx/cols);
-    const ww=W_W(), wh=W_H();
-    const cellW=ww/cols, cellH=wh/rows;
-    const x = cellW*(col+0.5) + randRange(-cellW*0.3, cellW*0.3);
-    const y = cellH*(row+0.5) + randRange(-cellH*0.3, cellH*0.3);
-    const angle = randRange(0, Math.PI*2);
-    turtles.push({
-      id: id++, strategy: s.key, score: 0,
-      partnered: false, partner: null,
-      defectNow: false, partnerDefected: false,
-      partnerHistory: {},
-      x: Math.max(15, Math.min(ww-15, x)),
-      y: Math.max(15, Math.min(wh-15, y)),
-      angle, label: "", labelAlpha: 0,
+
+  const total=agentDefs.length;
+  const ww=WW(), wh=WH();
+  const cols=Math.ceil(Math.sqrt(total*(ww/wh)));
+  const rows=Math.ceil(total/cols);
+
+  agentDefs.forEach((s, idx)=>{
+    const col=idx%cols, row=Math.floor(idx/cols);
+    const x = (ww/cols)*(col+0.5) + (Math.random()-.5)*(ww/cols)*.6;
+    const y = (wh/rows)*(row+0.5) + (Math.random()-.5)*(wh/rows)*.6;
+    const angle = Math.random()*Math.PI*2;
+    agents.push({
+      id:idx, strategy:s.key, color:s.color,
+      score:0, defectNow:false, partnerDefected:false,
+      partnerHistory:{},
+      x: Math.max(15,Math.min(ww-15,x)),
+      y: Math.max(15,Math.min(wh-15,y)),
+      angle,
+      phase:"wander",   // wander | seek | meet | flee
+      partnerId:null,
+      meetTimer:0,
+      fleeTimer:0,
+      label:"", labelAlpha:0,
     });
   });
 }
 
 // ── STRATEGY LOGIC ────────────────────────────────────────────────────────────
-function selectAction(t) {
-  const ph = t.partnerHistory[t.partner.id] || false;
-  switch(t.strategy){
-    case "random":      t.defectNow = Math.random()<0.5; break;
-    case "cooperate":   t.defectNow = false; break;
-    case "defect":      t.defectNow = true;  break;
-    case "tit-for-tat": t.defectNow = ph;    break;
-    case "unforgiving": t.defectNow = ph;    break;
-    case "unknown":     t.defectNow = ph;    break;
+function selectAction(a){
+  const ph = a.partnerHistory[a.partnerId]||false;
+  switch(a.strategy){
+    case "random":      a.defectNow=Math.random()<0.5; break;
+    case "cooperate":   a.defectNow=false; break;
+    case "defect":      a.defectNow=true;  break;
+    default:            a.defectNow=ph;    break;  // tit-for-tat, unforgiving, unknown
   }
 }
-function updateHistory(t) {
-  switch(t.strategy){
+function updateHistory(a, partner){
+  switch(a.strategy){
     case "tit-for-tat": case "unknown":
-      t.partnerHistory[t.partner.id] = t.partnerDefected; break;
+      a.partnerHistory[partner.id]=a.partnerDefected; break;
     case "unforgiving":
-      if(t.partnerDefected) t.partnerHistory[t.partner.id]=true; break;
+      if(a.partnerDefected) a.partnerHistory[partner.id]=true; break;
   }
 }
 
-// ── TICK LOGIC ────────────────────────────────────────────────────────────────
-function goTick() {
-  const ww=W_W(), wh=W_H();
-
-  // Fade labels
-  turtles.forEach(t => { if(t.labelAlpha>0) t.labelAlpha-=0.06; });
-
-  // Release old partners — scatter them apart
-  turtles.forEach(t => {
-    if(t.partnered){
-      // bounce away in opposite direction after interaction
-      t.angle += Math.PI + randRange(-0.5, 0.5);
-    }
-    t.partnered=false; t.partner=null;
-  });
-
-  // Move all turtles
-  turtles.forEach(t => {
-    t.angle += randRange(-0.25, 0.25);
-    const speed = 2.5;
-    t.x += Math.cos(t.angle) * speed;
-    t.y += Math.sin(t.angle) * speed;
-    // wrap around edges
-    t.x = (t.x + ww) % ww;
-    t.y = (t.y + wh) % wh;
-  });
-
-  // Pair up randomly
-  const arr = [...turtles].sort(()=>Math.random()-0.5);
-  for(let i=0;i+1<arr.length;i+=2){
-    arr[i].partnered=true;   arr[i].partner=arr[i+1];
-    arr[i+1].partnered=true; arr[i+1].partner=arr[i];
-    // face each other
-    arr[i].angle   = 0;
-    arr[i+1].angle = Math.PI;
+// ── PAIRING ENGINE ────────────────────────────────────────────────────────────
+// Called once per sim tick: assigns partners to wandering agents
+function assignPairs(){
+  const wanderers = agents.filter(a=>a.phase==="wander");
+  // shuffle
+  for(let i=wanderers.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [wanderers[i],wanderers[j]]=[wanderers[j],wanderers[i]];
   }
-
-  const paired = turtles.filter(t=>t.partnered);
-  paired.forEach(selectAction);
-  paired.forEach(t => {
-    t.partnerDefected = t.partner.defectNow;
-    const gain = PAYOFF[`${t.defectNow},${t.partnerDefected}`];
-    t.score += gain;
-    t.label = String(gain);
-    t.labelAlpha = 1.0;
-  });
-  paired.forEach(updateHistory);
-  tick++;
+  for(let i=0;i+1<wanderers.length;i+=2){
+    wanderers[i].phase   = "seek";
+    wanderers[i+1].phase = "seek";
+    wanderers[i].partnerId   = wanderers[i+1].id;
+    wanderers[i+1].partnerId = wanderers[i].id;
+  }
 }
 
-function avgScores() {
-  const out={};
+// ── RESOLVE INTERACTION ───────────────────────────────────────────────────────
+function resolveInteraction(a, b){
+  selectAction(a); selectAction(b);
+  a.partnerDefected = b.defectNow;
+  b.partnerDefected = a.defectNow;
+  const gainA = PAYOFF[`${a.defectNow},${a.partnerDefected}`];
+  const gainB = PAYOFF[`${b.defectNow},${b.partnerDefected}`];
+  a.score+=gainA; b.score+=gainB;
+  a.label=String(gainA); b.label=String(gainB);
+  a.labelAlpha=1; b.labelAlpha=1;
+  updateHistory(a,b); updateHistory(b,a);
+}
+
+// ── SIM TICK (called by controls) ─────────────────────────────────────────────
+function doSimTick(){
+  // only tick once all agents are back to wander/flee (or force it)
+  assignPairs();
+  simTick++;
+  updateScoreHistory();
+  document.getElementById("tick-display").textContent=simTick;
+  updateLeaderboard();
+  resizeChart(); drawChart();
+}
+
+function updateScoreHistory(){
   STRATEGIES.forEach(s=>{
-    const g=turtles.filter(t=>t.strategy===s.key);
-    out[s.key]=g.length ? g.reduce((a,t)=>a+t.score,0)/g.length : null;
+    const g=agents.filter(a=>a.strategy===s.key);
+    if(g.length) scoreHistory[s.key].push(g.reduce((acc,a)=>acc+a.score,0)/g.length);
   });
-  return out;
 }
 
-// ── WORLD CANVAS ──────────────────────────────────────────────────────────────
-const worldCanvas = document.getElementById("world");
-const wctx = worldCanvas.getContext("2d");
+// ── ANIMATION FRAME ───────────────────────────────────────────────────────────
+// This runs every frame (~60fps) and handles ALL movement + drawing
+let lastTime=0;
+function animFrame(ts){
+  requestAnimationFrame(animFrame);
+  const ww=WW(), wh=WH();
 
-function resizeWorld(){
-  worldCanvas.width  = worldCanvas.offsetWidth  * devicePixelRatio;
-  worldCanvas.height = worldCanvas.offsetHeight * devicePixelRatio;
-  wctx.scale(devicePixelRatio, devicePixelRatio);
-}
+  // ── MOVE AGENTS ──
+  agents.forEach(a=>{
+    if(a.labelAlpha>0) a.labelAlpha-=0.02;
 
-function drawArrow(ctx, x, y, angle, color, size=13){
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(angle);
-  ctx.beginPath();
-  // NetLogo-style triangle arrow
-  ctx.moveTo(size, 0);
-  ctx.lineTo(-size*0.6,  size*0.55);
-  ctx.lineTo(-size*0.6, -size*0.55);
-  ctx.closePath();
-  ctx.fillStyle = color;
-  ctx.fill();
-  ctx.restore();
-}
-
-function drawWorld(){
-  const ww=W_W(), wh=W_H();
-  wctx.clearRect(0,0,ww,wh);
-  // dark background already set by CSS
-
-  turtles.forEach(t => {
-    const col = STRATEGIES.find(s=>s.key===t.strategy).color;
-    drawArrow(wctx, t.x, t.y, t.angle, col);
-
-    // draw pairing line
-    if(t.partnered && t.partner && t.id < t.partner.id){
-      wctx.beginPath();
-      wctx.moveTo(t.x, t.y);
-      wctx.lineTo(t.partner.x, t.partner.y);
-      wctx.strokeStyle = "rgba(255,255,255,0.07)";
-      wctx.lineWidth = 1;
-      wctx.stroke();
+    if(a.phase==="wander"){
+      // random walk
+      a.angle += (Math.random()-.5)*0.35;
+      a.x += Math.cos(a.angle)*SPEED;
+      a.y += Math.sin(a.angle)*SPEED;
+      // wrap
+      a.x=(a.x+ww)%ww; a.y=(a.y+wh)%wh;
     }
+    else if(a.phase==="seek"){
+      const partner=agents[a.partnerId];
+      if(!partner){ a.phase="wander"; return; }
+      const dx=partner.x-a.x, dy=partner.y-a.y;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      a.angle=Math.atan2(dy,dx);
+      if(dist<MEET_DIST){
+        // close enough — enter meet phase (both must be in seek)
+        if(partner.phase==="seek"){
+          a.phase="meet"; partner.phase="meet";
+          a.meetTimer=MEET_FRAMES; partner.meetTimer=MEET_FRAMES;
+          // face each other
+          a.angle      = Math.atan2(dy,dx);
+          partner.angle= Math.atan2(-dy,-dx);
+          // resolve game
+          resolveInteraction(a,partner);
+        }
+      } else {
+        a.x+=Math.cos(a.angle)*SEEK_SPEED;
+        a.y+=Math.sin(a.angle)*SEEK_SPEED;
+        a.x=(a.x+ww)%ww; a.y=(a.y+wh)%wh;
+      }
+    }
+    else if(a.phase==="meet"){
+      a.meetTimer--;
+      if(a.meetTimer<=0){
+        // separate: flee in opposite direction
+        a.angle += Math.PI + (Math.random()-.5)*0.8;
+        a.phase="flee";
+        a.fleeTimer=FLEE_FRAMES;
+        a.partnerId=null;
+      }
+    }
+    else if(a.phase==="flee"){
+      a.x+=Math.cos(a.angle)*FLEE_SPEED;
+      a.y+=Math.sin(a.angle)*FLEE_SPEED;
+      a.x=(a.x+ww)%ww; a.y=(a.y+wh)%wh;
+      a.fleeTimer--;
+      if(a.fleeTimer<=0) a.phase="wander";
+    }
+  });
+
+  // ── DRAW WORLD ──
+  wctx.clearRect(0,0,ww,wh);
+
+  // draw connection lines for meeting pairs
+  const drawn=new Set();
+  agents.forEach(a=>{
+    if((a.phase==="seek"||a.phase==="meet") && a.partnerId!=null && !drawn.has(a.partnerId)){
+      const b=agents[a.partnerId];
+      if(b){
+        drawn.add(a.id);
+        wctx.beginPath();
+        wctx.moveTo(a.x,a.y); wctx.lineTo(b.x,b.y);
+        wctx.strokeStyle= a.phase==="meet"
+          ? "rgba(255,255,255,0.18)"
+          : "rgba(255,255,255,0.06)";
+        wctx.lineWidth=1;
+        wctx.stroke();
+      }
+    }
+  });
+
+  // draw agents
+  agents.forEach(a=>{
+    drawArrow(a.x, a.y, a.angle, a.color, a.phase==="meet"?13:11);
 
     // payoff label
-    if(t.labelAlpha > 0 && t.label){
+    if(a.labelAlpha>0 && a.label){
       wctx.save();
-      wctx.globalAlpha = Math.min(1, t.labelAlpha);
-      wctx.font = "bold 13px 'IBM Plex Mono', monospace";
-      wctx.fillStyle = "#ffffff";
-      wctx.fillText(t.label, t.x+14, t.y-8);
+      wctx.globalAlpha=a.labelAlpha;
+      wctx.font="bold 12px 'IBM Plex Mono',monospace";
+      wctx.fillStyle="#fff";
+      wctx.fillText(a.label, a.x+13, a.y-8);
       wctx.restore();
     }
   });
 }
 
-// Continuous smooth world animation (independent of tick rate)
-let worldAnimFrame;
-function worldLoop(){
-  drawWorld();
-  worldAnimFrame = requestAnimationFrame(worldLoop);
+function drawArrow(x,y,angle,color,size){
+  wctx.save();
+  wctx.translate(x,y);
+  wctx.rotate(angle);
+  wctx.beginPath();
+  wctx.moveTo(size,0);
+  wctx.lineTo(-size*.65, size*.55);
+  wctx.lineTo(-size*.3,0);
+  wctx.lineTo(-size*.65,-size*.55);
+  wctx.closePath();
+  wctx.fillStyle=color;
+  wctx.fill();
+  wctx.restore();
 }
 
-// ── SCORE CHART ───────────────────────────────────────────────────────────────
-const chartCanvas = document.getElementById("chart");
-const cctx = chartCanvas.getContext("2d");
-
+// ── CHART ────────────────────────────────────────────────────────────────────
+const chartCanvas=document.getElementById("chart");
+const cctx=chartCanvas.getContext("2d");
 function resizeChart(){
-  chartCanvas.width  = chartCanvas.offsetWidth  * devicePixelRatio;
-  chartCanvas.height = chartCanvas.offsetHeight * devicePixelRatio;
-  cctx.scale(devicePixelRatio, devicePixelRatio);
+  chartCanvas.width=chartCanvas.offsetWidth*devicePixelRatio;
+  chartCanvas.height=chartCanvas.offsetHeight*devicePixelRatio;
+  cctx.scale(devicePixelRatio,devicePixelRatio);
 }
-
 function drawChart(){
-  const W=chartCanvas.offsetWidth, H=chartCanvas.offsetHeight;
+  const W=chartCanvas.offsetWidth,H=chartCanvas.offsetHeight;
   cctx.clearRect(0,0,W,H);
-  const PAD={top:8,right:16,bottom:28,left:44};
+  const PAD={top:8,right:14,bottom:26,left:40};
   const pw=W-PAD.left-PAD.right, ph=H-PAD.top-PAD.bottom;
-
   let maxVal=10;
-  STRATEGIES.forEach(s=>{ history[s.key].forEach(v=>{ if(v>maxVal) maxVal=v; }); });
-  maxVal = Math.ceil(maxVal/10)*10||10;
-  const totalTicks = Math.max(...STRATEGIES.map(s=>history[s.key].length),1);
-
-  // grid
+  STRATEGIES.forEach(s=>scoreHistory[s.key].forEach(v=>{ if(v>maxVal)maxVal=v; }));
+  maxVal=Math.ceil(maxVal/10)*10||10;
+  const totalT=Math.max(...STRATEGIES.map(s=>scoreHistory[s.key].length),1);
   cctx.strokeStyle="#21262d"; cctx.lineWidth=1;
   cctx.fillStyle="#7d8590"; cctx.font="9px 'IBM Plex Mono',monospace"; cctx.textAlign="right";
-  for(let i=0;i<=5;i++){
-    const y=PAD.top+ph-(i/5)*ph;
-    cctx.beginPath(); cctx.moveTo(PAD.left,y); cctx.lineTo(PAD.left+pw,y); cctx.stroke();
-    cctx.fillText(Math.round((i/5)*maxVal), PAD.left-5, y+3);
+  for(let i=0;i<=4;i++){
+    const y=PAD.top+ph-(i/4)*ph;
+    cctx.beginPath();cctx.moveTo(PAD.left,y);cctx.lineTo(PAD.left+pw,y);cctx.stroke();
+    cctx.fillText(Math.round((i/4)*maxVal),PAD.left-4,y+3);
   }
   cctx.textAlign="center";
-  const steps=Math.min(totalTicks,8);
+  const steps=Math.min(totalT,8);
   for(let i=0;i<=steps;i++){
-    const t2=Math.round((i/steps)*(totalTicks-1));
-    const x=PAD.left+(t2/Math.max(totalTicks-1,1))*pw;
-    cctx.fillText(t2, x, H-PAD.bottom+13);
+    const t2=Math.round((i/steps)*(totalT-1));
+    const x=PAD.left+(t2/Math.max(totalT-1,1))*pw;
+    cctx.fillText(t2,x,H-PAD.bottom+12);
   }
-
   STRATEGIES.forEach(s=>{
-    const data=history[s.key]; if(!data.length) return;
+    const data=scoreHistory[s.key]; if(!data.length)return;
     const col=STRATEGIES.find(x=>x.key===s.key).color;
     cctx.strokeStyle=col; cctx.lineWidth=2; cctx.lineJoin="round";
     cctx.beginPath();
     data.forEach((v,i)=>{
-      const x=PAD.left+(i/Math.max(totalTicks-1,1))*pw;
+      const x=PAD.left+(i/Math.max(totalT-1,1))*pw;
       const y=PAD.top+ph-(v/maxVal)*ph;
       i===0?cctx.moveTo(x,y):cctx.lineTo(x,y);
     });
@@ -510,10 +479,12 @@ function drawChart(){
 }
 
 // ── LEADERBOARD ───────────────────────────────────────────────────────────────
-function updateLeaderboard(scores){
+function updateLeaderboard(){
   const el=document.getElementById("leaderboard"); el.innerHTML="";
-  const entries=STRATEGIES.map(s=>({...s,avg:scores[s.key]}))
-    .filter(s=>s.avg!==null).sort((a,b)=>b.avg-a.avg);
+  const entries=STRATEGIES.map(s=>{
+    const g=agents.filter(a=>a.strategy===s.key);
+    return {...s, avg: g.length ? g.reduce((acc,a)=>acc+a.score,0)/g.length : null};
+  }).filter(s=>s.avg!==null).sort((a,b)=>b.avg-a.avg);
   const max=entries[0]?.avg||1;
   entries.forEach((s,i)=>{
     const row=document.createElement("div");
@@ -526,27 +497,10 @@ function updateLeaderboard(scores){
   });
 }
 
-function updateLegend(){
-  STRATEGIES.forEach(s=>{
-    const n=parseInt(document.getElementById(`sl-${s.key}`).value);
-    document.getElementById(`leg-${s.key}`).style.display=n>0?"flex":"none";
-  });
-}
-
-// ── RENDER ────────────────────────────────────────────────────────────────────
-function render(){
-  const scores=avgScores();
-  STRATEGIES.forEach(s=>{ if(scores[s.key]!==null) history[s.key].push(scores[s.key]); });
-  resizeChart(); drawChart();
-  updateLeaderboard(scores);
-  document.getElementById("tick-display").textContent=tick;
-}
-
-// ── CONTROLS ──────────────────────────────────────────────────────────────────
+// ── CONTROLS ─────────────────────────────────────────────────────────────────
 function doReset(){
-  stopRun();
+  stopSim();
   setup();
-  STRATEGIES.forEach(s=>{ history[s.key]=[]; });
   resizeChart(); cctx.clearRect(0,0,chartCanvas.offsetWidth,chartCanvas.offsetHeight);
   document.getElementById("tick-display").textContent=0;
   document.getElementById("leaderboard").innerHTML="";
@@ -554,41 +508,45 @@ function doReset(){
 }
 
 function doStep(){
-  if(!turtles.length) setup();
-  goTick(); render();
+  if(!agents.length) setup();
+  doSimTick();
 }
 
-function stopRun(){
-  running=false; clearTimeout(runTimer);
+function stopSim(){
+  simRunning=false; clearTimeout(simTimer);
   document.getElementById("btn-run").textContent="▶ Run";
   document.getElementById("btn-step").disabled=false;
 }
 
 function doRun(){
-  if(running){ stopRun(); return; }
-  if(!turtles.length) setup();
+  if(simRunning){ stopSim(); return; }
+  if(!agents.length) setup();
   const maxTicks=parseInt(document.getElementById("tick-count").value)||100;
-  const startTick=tick;
-  running=true;
+  const startTick=simTick;
+  simRunning=true;
   document.getElementById("btn-run").textContent="⏸ Pause";
   document.getElementById("btn-step").disabled=true;
   function loop(){
-    if(!running||(tick-startTick)>=maxTicks){ stopRun(); return; }
-    goTick(); render();
-    runTimer=setTimeout(loop,40);
+    if(!simRunning||(simTick-startTick)>=maxTicks){ stopSim(); return; }
+    // wait until most agents are done meeting before next tick
+    const busy=agents.filter(a=>a.phase==="seek"||a.phase==="meet").length;
+    if(busy===0){
+      doSimTick();
+    }
+    simTimer=setTimeout(loop,60);
   }
   loop();
 }
 
-document.getElementById("btn-run").addEventListener("click", doRun);
-document.getElementById("btn-step").addEventListener("click", doStep);
-document.getElementById("btn-reset").addEventListener("click", doReset);
-window.addEventListener("resize", ()=>{ resizeWorld(); resizeChart(); drawChart(); });
+document.getElementById("btn-run").addEventListener("click",doRun);
+document.getElementById("btn-step").addEventListener("click",doStep);
+document.getElementById("btn-reset").addEventListener("click",doReset);
+window.addEventListener("resize",()=>{ resizeWorld(); resizeChart(); drawChart(); });
 
-// ── INIT ──────────────────────────────────────────────────────────────────────
+// ── INIT ─────────────────────────────────────────────────────────────────────
 resizeWorld(); resizeChart(); updateLegend();
-setup();         // spawn turtles immediately so world is populated
-worldLoop();     // start smooth animation loop
+setup();
+requestAnimationFrame(animFrame);
 </script>
 </body>
 </html>
