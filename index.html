@@ -121,7 +121,7 @@
     overflow: hidden;
     position: relative;
   }
-  .world-box canvas { display: block; width: 100%; height: 320px; }
+  .world-box canvas { display: block; width: 100%; height: 420px; }
 
   /* CHART */
   .chart-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
@@ -286,24 +286,32 @@ function setup() {
   turtles=[]; tick=0; history={};
   STRATEGIES.forEach(s=>{ history[s.key]=[]; });
   let id=0;
+  // collect all agents first to spread them evenly
+  const agentDefs=[];
   STRATEGIES.forEach(s => {
     const n = parseInt(document.getElementById(`sl-${s.key}`).value);
-    for(let i=0;i<n;i++){
-      const angle = randRange(0, Math.PI*2);
-      turtles.push({
-        id: id++, strategy: s.key, score: 0,
-        partnered: false, partner: null,
-        defectNow: false, partnerDefected: false,
-        partnerHistory: {},
-        // visual
-        x: randRange(10, W_W()-10),
-        y: randRange(10, W_H()-10),
-        angle: angle,
-        vx: Math.cos(angle)*1.2,
-        vy: Math.sin(angle)*1.2,
-        label: "", labelAlpha: 0,
-      });
-    }
+    for(let i=0;i<n;i++) agentDefs.push(s);
+  });
+  const total = agentDefs.length;
+  agentDefs.forEach((s, idx) => {
+    // evenly distribute using a grid with jitter
+    const cols = Math.ceil(Math.sqrt(total * (W_W()/W_H())));
+    const rows = Math.ceil(total/cols);
+    const col = idx % cols, row = Math.floor(idx/cols);
+    const ww=W_W(), wh=W_H();
+    const cellW=ww/cols, cellH=wh/rows;
+    const x = cellW*(col+0.5) + randRange(-cellW*0.3, cellW*0.3);
+    const y = cellH*(row+0.5) + randRange(-cellH*0.3, cellH*0.3);
+    const angle = randRange(0, Math.PI*2);
+    turtles.push({
+      id: id++, strategy: s.key, score: 0,
+      partnered: false, partner: null,
+      defectNow: false, partnerDefected: false,
+      partnerHistory: {},
+      x: Math.max(15, Math.min(ww-15, x)),
+      y: Math.max(15, Math.min(wh-15, y)),
+      angle, label: "", labelAlpha: 0,
+    });
   });
 }
 
@@ -330,34 +338,39 @@ function updateHistory(t) {
 
 // ── TICK LOGIC ────────────────────────────────────────────────────────────────
 function goTick() {
-  // Move unpaired turtles
   const ww=W_W(), wh=W_H();
+
+  // Fade labels
+  turtles.forEach(t => { if(t.labelAlpha>0) t.labelAlpha-=0.06; });
+
+  // Release old partners — scatter them apart
   turtles.forEach(t => {
-    if(!t.partnered){
-      // slight random steering
-      t.angle += randRange(-0.3,0.3);
-      t.vx = Math.cos(t.angle)*1.4;
-      t.vy = Math.sin(t.angle)*1.4;
-      t.x = (t.x + t.vx + ww) % ww;
-      t.y = (t.y + t.vy + wh) % wh;
+    if(t.partnered){
+      // bounce away in opposite direction after interaction
+      t.angle += Math.PI + randRange(-0.5, 0.5);
     }
-    // fade label
-    if(t.labelAlpha > 0) t.labelAlpha -= 0.04;
+    t.partnered=false; t.partner=null;
   });
 
-  // Release old partners
-  turtles.forEach(t => { t.partnered=false; t.partner=null; });
+  // Move all turtles
+  turtles.forEach(t => {
+    t.angle += randRange(-0.25, 0.25);
+    const speed = 2.5;
+    t.x += Math.cos(t.angle) * speed;
+    t.y += Math.sin(t.angle) * speed;
+    // wrap around edges
+    t.x = (t.x + ww) % ww;
+    t.y = (t.y + wh) % wh;
+  });
 
-  // Pair up
+  // Pair up randomly
   const arr = [...turtles].sort(()=>Math.random()-0.5);
   for(let i=0;i+1<arr.length;i+=2){
     arr[i].partnered=true;   arr[i].partner=arr[i+1];
     arr[i+1].partnered=true; arr[i+1].partner=arr[i];
-    // move them close together
-    const mx=(arr[i].x+arr[i+1].x)/2, my=(arr[i].y+arr[i+1].y)/2;
-    arr[i].x   = mx-8; arr[i].angle   = 0;
-    arr[i+1].x = mx+8; arr[i+1].angle = Math.PI;
-    arr[i].y = arr[i+1].y = my;
+    // face each other
+    arr[i].angle   = 0;
+    arr[i+1].angle = Math.PI;
   }
 
   const paired = turtles.filter(t=>t.partnered);
@@ -392,7 +405,7 @@ function resizeWorld(){
   wctx.scale(devicePixelRatio, devicePixelRatio);
 }
 
-function drawArrow(ctx, x, y, angle, color, size=7){
+function drawArrow(ctx, x, y, angle, color, size=13){
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(angle);
@@ -430,9 +443,9 @@ function drawWorld(){
     if(t.labelAlpha > 0 && t.label){
       wctx.save();
       wctx.globalAlpha = Math.min(1, t.labelAlpha);
-      wctx.font = "bold 10px 'IBM Plex Mono', monospace";
+      wctx.font = "bold 13px 'IBM Plex Mono', monospace";
       wctx.fillStyle = "#ffffff";
-      wctx.fillText(t.label, t.x+9, t.y-5);
+      wctx.fillText(t.label, t.x+14, t.y-8);
       wctx.restore();
     }
   });
